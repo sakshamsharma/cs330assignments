@@ -157,6 +157,23 @@ ExceptionHandler(ExceptionType which)
         machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
         machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
         machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+    }
+    else if ((which == SyscallException) && (type == SYScall_GetReg)) {
+        // Since arguments are passed in registers as well, and arg1 is in r4
+        // Register 4 contains the index of the register to be read
+
+        // Read value from register 4, and read that register's value
+
+        // Also, error checking (that the register number is valid)
+        // has been done in machine.cc file's ReadRegister function
+
+        // TODO Figure out if unsigned is needed
+        machine->WriteRegister(2, (machine->ReadRegister(machine->ReadRegister(4))));
+
+        // Advance program counters.
+        machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+        machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+        machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
     } else {
         printf("Unexpected user mode exception %d %d\n", which, type);
         ASSERT(FALSE);
