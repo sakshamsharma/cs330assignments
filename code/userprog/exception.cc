@@ -26,6 +26,7 @@
 #include "syscall.h"
 #include "console.h"
 #include "synch.h"
+#include "../machine/translate.h"
 
 //----------------------------------------------------------------------
 // ExceptionHandler
@@ -174,6 +175,69 @@ ExceptionHandler(ExceptionType which)
         machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
         machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
         machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+    }
+    else if ((which == SyscallException) && (type == SYScall_GetPA)) {
+
+        // Arguments passed in register 4 by convention
+        int virtAddr = machine->ReadRegister(4);
+
+        // TODO Decide if these variables should be global or stay
+        int i;
+        unsigned int vpn, offset;
+        TranslationEntry *entry;
+        unsigned int pageFrame;
+        bool found = false;
+
+        // Calculate the virtual page number, and offset within the
+        // page from the virtual address
+        vpn = (unsigned) virtAddr / PageSize;
+
+        // TODO IMPORTANT Check if we need '<' or '<='
+        if (vpn < machine->pageTableSize) {
+            offset = (unsigned) virtAddr % PageSize;
+
+            if (machine->tlb == NULL) {
+                // => page table => vpn is index into table
+                entry = &machine->NachOSpageTable[vpn];
+                found = true;
+            } else {
+                for (entry = NULL, i = 0; i < TLBSize; i++)
+                    if (machine->tlb[i].valid &&
+                        (machine->tlb[i].virtualPage == vpn)) {
+                        entry = &machine->tlb[i];
+                        found = true;
+                        break;
+                    }
+            }
+
+            if (found) {
+                pageFrame = entry->physicalPage;
+
+                // TODO IMPORTANT Check if we need '<' or '<='
+                if (pageFrame < NumPhysPages) {
+                    // Everything went fine
+                    entry->use = TRUE;      // set the use, dirty bits
+                    machine->WriteRegister(2, pageFrame * PageSize + offset);
+
+                } else {
+                    // Physical page number was larger than num of
+                    // phyical pages
+                    machine->WriteRegister(2, -1);
+                }
+            } else {
+                // The for loop didn't find a valid page table entry
+                machine->WriteRegister(2, -1);
+            }
+        } else {
+            // Virtual page number >= number of entries in page table
+            machine->WriteRegister(2, -1);
+        }
+
+        // Advance program counters.
+        machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+        machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+        machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+
     } else {
         printf("Unexpected user mode exception %d %d\n", which, type);
         ASSERT(FALSE);
