@@ -21,8 +21,8 @@
 #include "system.h"
 
 #define STACK_FENCEPOST 0xdeadbeef  // this is put at the top of the
-                    // execution stack, for detecting
-                    // stack overflows
+// execution stack, for detecting
+// stack overflows
 
 //----------------------------------------------------------------------
 // NachOSThread::NachOSThread
@@ -61,7 +61,7 @@ NachOSThread::~NachOSThread()
 
     ASSERT(this != currentThread);
     if (stack != NULL)
-    DeallocBoundedArray((char *) stack, StackSize * sizeof(int));
+        DeallocBoundedArray((char *) stack, StackSize * sizeof(int));
 }
 
 //----------------------------------------------------------------------
@@ -88,13 +88,13 @@ void
 NachOSThread::ThreadFork(VoidFunctionPtr func, int arg)
 {
     DEBUG('t', "Forking thread \"%s\" with func = 0x%x, arg = %d\n",
-      name, (int) func, arg);
+          name, (int) func, arg);
 
     AllocateThreadStack(func, arg);
 
     IntStatus oldLevel = interrupt->SetLevel(IntOff);
     scheduler->ThreadIsReadyToRun(this);    // ThreadIsReadyToRun assumes that interrupts
-                    // are disabled!
+    // are disabled!
     (void) interrupt->SetLevel(oldLevel);
 }
 
@@ -118,7 +118,7 @@ NachOSThread::CheckOverflow()
 {
     if (stack != NULL)
 #ifdef HOST_SNAKE           // Stacks grow upward on the Snakes
-    ASSERT(stack[StackSize - 1] == STACK_FENCEPOST);
+        ASSERT(stack[StackSize - 1] == STACK_FENCEPOST);
 #else
     ASSERT(*stack == STACK_FENCEPOST);
 #endif
@@ -183,8 +183,8 @@ NachOSThread::YieldCPU ()
 
     nextThread = scheduler->FindNextThreadToRun();
     if (nextThread != NULL) {
-    scheduler->ThreadIsReadyToRun(this);
-    scheduler->Schedule(nextThread);
+        scheduler->ThreadIsReadyToRun(this);
+        scheduler->Schedule(nextThread);
     }
     (void) interrupt->SetLevel(oldLevel);
 }
@@ -220,7 +220,7 @@ NachOSThread::PutThreadToSleep ()
 
     status = BLOCKED;
     while ((nextThread = scheduler->FindNextThreadToRun()) == NULL)
-    interrupt->Idle();  // no one to run, wait for an interrupt
+        interrupt->Idle();  // no one to run, wait for an interrupt
 
     scheduler->Schedule(nextThread); // returns when we've been signalled
 }
@@ -299,7 +299,7 @@ void
 NachOSThread::SaveUserState()
 {
     for (int i = 0; i < NumTotalRegs; i++)
-    userRegisters[i] = machine->ReadRegister(i);
+        userRegisters[i] = machine->ReadRegister(i);
 }
 
 //----------------------------------------------------------------------
@@ -315,6 +315,6 @@ void
 NachOSThread::RestoreUserState()
 {
     for (int i = 0; i < NumTotalRegs; i++)
-    machine->WriteRegister(i, userRegisters[i]);
+        machine->WriteRegister(i, userRegisters[i]);
 }
 #endif
