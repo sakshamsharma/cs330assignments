@@ -102,6 +102,8 @@ public:
     char* getName() { return (name); }
     void Print() { printf("%s, ", name); }
 
+    int getPID();   // Return the private PID
+
 private:
     // some of the private data for this class is listed above
 
@@ -116,6 +118,11 @@ private:
     // Used internally by ThreadFork()
 
     int pid, ppid;          // My pid and my parent's pid
+
+    int getUniquePid();     // Interface to getting a new PID
+
+    static int lastPid;     // Static member, only one instance across
+                            // all threads
 
 #ifdef USER_PROGRAM
 // A thread running a user program actually has *two* sets of CPU registers --

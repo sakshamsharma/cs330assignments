@@ -38,6 +38,8 @@ NachOSThread::NachOSThread(char* threadName)
     stackTop = NULL;
     stack = NULL;
     status = JUST_CREATED;
+
+    pid = getUniquePid();
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
@@ -318,3 +320,18 @@ NachOSThread::RestoreUserState()
         machine->WriteRegister(i, userRegisters[i]);
 }
 #endif
+
+// Initializing non-const static member
+int NachOSThread::lastPid = 1;
+
+// Returns a fresh new PID for a newly forked thread
+// The first created thread gets a PID of 1 by design
+// lastPid is a static member
+int NachOSThread::getUniquePid() {
+    return ++lastPid;
+}
+
+// Return the private variable PID
+int NachOSThread::getPID() {
+    return pid;
+}
