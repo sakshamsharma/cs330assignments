@@ -198,8 +198,10 @@ ExceptionHandler(ExceptionType which)
 
             if (machine->tlb == NULL) {
                 // => page table => vpn is index into table
-                entry = &machine->NachOSpageTable[vpn];
-                found = true;
+                if (machine->NachOSpageTable[vpn].valid) {
+                    entry = &machine->NachOSpageTable[vpn];
+                    found = true;
+                }
             } else {
                 for (entry = NULL, i = 0; i < TLBSize; i++)
                     if (machine->tlb[i].valid &&
@@ -220,15 +222,18 @@ ExceptionHandler(ExceptionType which)
                     machine->WriteRegister(2, pageFrame * PageSize + offset);
 
                 } else {
+                    // ERROR 1 CATCH
                     // Physical page number was larger than num of
                     // phyical pages
                     machine->WriteRegister(2, -1);
                 }
             } else {
+                // ERROR 2 CATCH
                 // The for loop didn't find a valid page table entry
                 machine->WriteRegister(2, -1);
             }
         } else {
+            // ERROR 3 CATCH
             // Virtual page number >= number of entries in page table
             machine->WriteRegister(2, -1);
         }
