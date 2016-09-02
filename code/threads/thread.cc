@@ -40,11 +40,12 @@ NachOSThread::NachOSThread(char* threadName)
     status = JUST_CREATED;
 
     pid = getUniquePid();
-    if( pid == 1 )
+    if (pid == 1) {
         ppid = 0;
-    else
+    } else {
         ppid = currentThread->getPID();
-    
+    }
+
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
@@ -327,7 +328,7 @@ NachOSThread::RestoreUserState()
 #endif
 
 // Initializing non-const static member
-int NachOSThread::lastPid = 1;
+int NachOSThread::lastPid = 0;
 
 // Returns a fresh new PID for a newly forked thread
 // The first created thread gets a PID of 1 by design
