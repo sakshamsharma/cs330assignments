@@ -102,7 +102,8 @@ public:
     char* getName() { return (name); }
     void Print() { printf("%s, ", name); }
 
-    int getPID();   // Return the private PID
+    int getPID();   // Return the private PID(
+    int getPPID();  // Return the PID of parent of the current thead 
 
 private:
     // some of the private data for this class is listed above

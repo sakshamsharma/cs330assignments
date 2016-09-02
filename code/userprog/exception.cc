@@ -174,8 +174,7 @@ ExceptionHandler(ExceptionType which)
         machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
         machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
         machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
-    }
-    else if ((which == SyscallException) && (type == SYScall_GetPA)) {
+    } else if ((which == SyscallException) && (type == SYScall_GetPA)) {
 
         // Arguments passed in register 4 by convention
         int virtAddr = machine->ReadRegister(4);
@@ -244,6 +243,14 @@ ExceptionHandler(ExceptionType which)
     } else if ((which == SyscallException) && (type == SYScall_GetPID)) {
         // We need to get the calling thread's PID
         machine->WriteRegister(2, currentThread->getPID());
+
+        // Advance program counters.
+        machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+        machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+        machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+    } else if ((which == SyscallException) && (type == SYScall_GetPPID)) {
+        // We need to get the calling thread's PID
+        machine->WriteRegister(2, currentThread->getPPID());
 
         // Advance program counters.
         machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));

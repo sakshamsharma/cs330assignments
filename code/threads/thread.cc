@@ -40,6 +40,11 @@ NachOSThread::NachOSThread(char* threadName)
     status = JUST_CREATED;
 
     pid = getUniquePid();
+    if( pid == 1 )
+        ppid = 0;
+    else
+        ppid = currentThread->getPID();
+    
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
@@ -334,4 +339,9 @@ int NachOSThread::getUniquePid() {
 // Return the private variable PID
 int NachOSThread::getPID() {
     return pid;
+}
+
+// Return the pid of the parent of current running thread
+int NachOSThread::getPPID() {
+    return ppid;
 }
