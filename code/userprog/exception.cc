@@ -190,7 +190,6 @@ ExceptionHandler(ExceptionType which)
         // page from the virtual address
         vpn = (unsigned) virtAddr / PageSize;
 
-        // TODO IMPORTANT Check if we need '<' or '<='
         if (vpn < machine->pageTableSize) {
             offset = (unsigned) virtAddr % PageSize;
 
@@ -202,6 +201,7 @@ ExceptionHandler(ExceptionType which)
                 }
             } else {
                 for (entry = NULL, i = 0; i < TLBSize; i++)
+                    // TODO Generates compiler warning. Investigate
                     if (machine->tlb[i].valid &&
                         (machine->tlb[i].virtualPage == vpn)) {
                         entry = &machine->tlb[i];
@@ -213,7 +213,6 @@ ExceptionHandler(ExceptionType which)
             if (found) {
                 pageFrame = entry->physicalPage;
 
-                // TODO IMPORTANT Check if we need '<' or '<='
                 if (pageFrame < NumPhysPages) {
                     // Everything went fine
                     entry->use = TRUE;      // set the use, dirty bits
