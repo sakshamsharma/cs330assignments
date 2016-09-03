@@ -62,7 +62,8 @@ static void
 TimerInterruptHandler(int dummy)
 {
     if (interrupt->getStatus() != IdleMode)
-    interrupt->YieldOnReturn();
+        interrupt->YieldOnReturn();
+    scheduler->WakeSomeSleepingThreads(stats->totalTicks);
 }
 
 //----------------------------------------------------------------------

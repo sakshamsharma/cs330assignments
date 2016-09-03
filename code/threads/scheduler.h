@@ -27,10 +27,16 @@ public:
     // list, if any, and return thread.
     void Schedule(NachOSThread* nextThread);    // Cause nextThread to start running
     void Print();           // Print contents of ready list
+    void WakeSomeSleepingThreads(int nowTime); // Wakes up threads
+                                               // whose sleep time is
+                                               // finished
+    void AddToSleepList(void *item, int tillTicks); // Put thread in
+                                                    // sleep list
 
 private:
     List *readyThreadList;          // queue of threads that are ready to run,
     // but not running
+    List *sleepingThreadList;       // List of threads sleeping right now
 };
 
 #endif // SCHEDULER_H

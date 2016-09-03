@@ -30,6 +30,7 @@
 NachOSscheduler::NachOSscheduler()
 {
     readyThreadList = new List;
+    sleepingThreadList = new List;
 }
 
 //----------------------------------------------------------------------
@@ -40,6 +41,7 @@ NachOSscheduler::NachOSscheduler()
 NachOSscheduler::~NachOSscheduler()
 {
     delete readyThreadList;
+    delete sleepingThreadList;
 }
 
 //----------------------------------------------------------------------
@@ -144,4 +146,34 @@ NachOSscheduler::Print()
 {
     printf("Ready list contents:\n");
     readyThreadList->Mapcar((VoidFunctionPtr) ThreadPrint);
+}
+
+//----------------------------------------------------------------------
+// NachOSscheduler::AddToSleepList
+// Put thread to sleep list
+// "thread" is a pointer to the thread object
+// "tillTicks" is the time (in ticks) when thread has to be woken up
+//----------------------------------------------------------------------
+void NachOSscheduler::AddToSleepList(void *thread, int tillTicks) {
+    printf("Sleeping a thread till %d\n", tillTicks);
+    sleepingThreadList->SortedInsert(thread, tillTicks);
+}
+
+//----------------------------------------------------------------------
+// NachOSscheduler::WakeSomeSleepingThreads
+// Wake all sleeping threads whose sleep time is up
+// "nowTime" is the current time in ticks obtained from stats
+//----------------------------------------------------------------------
+void NachOSscheduler::WakeSomeSleepingThreads(int nowTime) {
+    int timeKey;
+    NachOSThread *thread = (NachOSThread*)sleepingThreadList->SortedRemove(&timeKey);
+    while (thread != NULL) {
+        if (timeKey > nowTime) {
+            sleepingThreadList->SortedInsert(thread, timeKey);
+            break;
+        } else {
+            ThreadIsReadyToRun(thread);
+        }
+        thread = (NachOSThread*)sleepingThreadList->SortedRemove(&timeKey);
+    }
 }
