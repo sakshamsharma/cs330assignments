@@ -69,6 +69,6 @@ void ThreadTest() {
 
     NachOSThread *t = new NachOSThread("forked thread");
 
-    t->ThreadFork(SimpleThread2, 1);
+    t->ThreadFork(SimpleThread, 1);
     SimpleThread2(0);
 }
