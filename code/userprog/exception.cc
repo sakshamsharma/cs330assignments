@@ -76,6 +76,7 @@ ExceptionHandler(ExceptionType which)
     int type = machine->ReadRegister(2);
     int memval, vaddr, printval, tempval, exp;
     unsigned printvalus;        // Used for printing in hex
+    IntStatus oldstatus;
     if (!initializedConsoleSemaphores) {
         readAvail = new Semaphore("read avail", 0);
         writeDone = new Semaphore("write done", 1);
@@ -263,15 +264,23 @@ ExceptionHandler(ExceptionType which)
         machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
         machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
     } else if ((which == SyscallException) && (type == SYScall_Sleep)) {
-        tempval = machine->ReadRegister(4);
+        tempval = machine->ReadRegister(4);  // Time more
         exp = stats->totalTicks;  // Time till now
-        IntStatus oldstatus = interrupt->SetLevel(IntOff); // Time more
+        oldstatus = interrupt->SetLevel(IntOff); // Restore later
+
         if (tempval != 0) {
             scheduler->AddToSleepList((void*)currentThread, exp + tempval);
             currentThread->PutThreadToSleep();
         }
         currentThread->YieldCPU();
         interrupt->SetLevel(oldstatus);
+
+        // Advance program counters.
+        machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+        machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+        machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+    } else if ((which == SyscallException) && (type == SYScall_Yield)) {
+        currentThread->YieldCPU();
 
         // Advance program counters.
         machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
