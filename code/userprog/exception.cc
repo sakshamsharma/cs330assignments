@@ -75,6 +75,7 @@ ExceptionHandler(ExceptionType which)
 {
     int type = machine->ReadRegister(2);
     int memval, vaddr, printval, tempval, exp;
+    char buffer[257];
     unsigned printvalus;        // Used for printing in hex
     IntStatus oldstatus;
     if (!initializedConsoleSemaphores) {
@@ -281,11 +282,46 @@ ExceptionHandler(ExceptionType which)
         machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
     } else if ((which == SyscallException) && (type == SYScall_Yield)) {
         currentThread->YieldCPU();
+        // TODO Should we send a return value?
 
         // Advance program counters.
         machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
         machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
         machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+    } else if ((which == SyscallException) && (type == SYScall_Exec)) {
+        oldstatus = interrupt->SetLevel(IntOff); // Restore later
+        tempval = 0;
+
+        vaddr = machine->ReadRegister(4);
+        machine->ReadMem(vaddr, 1, &memval);
+        while ((*(char*)&memval) != '\0') {
+            buffer[tempval] = (*(char*)&memval);
+            tempval++;          // Buffer position being written to
+            vaddr++;            // Virtual address being read
+            machine->ReadMem(vaddr, 1, &memval);
+        }
+        buffer[tempval] = 0;
+
+        OpenFile *executable = fileSystem->Open(buffer);
+
+        if (executable == NULL) {
+            // Returns if exev failed
+            machine->WriteRegister(2, -1);
+
+            // Advance program counters.
+            machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+            machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+            machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+        }
+
+        delete currentThread->space;
+        currentThread->space = new ProcessAddrSpace(executable);
+        currentThread->space->InitUserCPURegisters(); // init reg vals
+        currentThread->space->RestoreStateOnSwitch(); // page table
+                                                      // register
+        delete executable; // close file
+
+        interrupt->SetLevel(oldstatus);
     } else {
         printf("Unexpected user mode exception %d %d\n", which, type);
         ASSERT(FALSE);

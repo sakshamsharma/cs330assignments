@@ -61,6 +61,7 @@ extern void Cleanup();
 static void
 TimerInterruptHandler(int dummy)
 {
+    //printf("Got an interrupt at %d\n", stats->totalTicks);
     if (interrupt->getStatus() != IdleMode)
         interrupt->YieldOnReturn();
     scheduler->WakeSomeSleepingThreads(stats->totalTicks);
