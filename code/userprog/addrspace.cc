@@ -75,7 +75,8 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *executable)
     numPagesInVM = divRoundUp(size, PageSize);
     size = numPagesInVM * PageSize;
 
-    ASSERT(numPagesInVM <= NumPhysPages);		// check we're not trying
+    ASSERT(numPagesInVM + machine->PhysPagesUsed <= NumPhysPages);
+                                                // check we're not trying
 						// to run anything too big --
 						// at least until we have
 						// virtual memory
@@ -85,8 +86,9 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *executable)
 // first, set up the translation 
     NachOSpageTable = new TranslationEntry[numPagesInVM];
     for (i = 0; i < numPagesInVM; i++) {
-	NachOSpageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
-	NachOSpageTable[i].physicalPage = i;
+	NachOSpageTable[i].virtualPage = i;	// virtual page # + Physical
+                                        //pages already used = phys page #
+	NachOSpageTable[i].physicalPage = i + machine->PhysPagesUsed;
 	NachOSpageTable[i].valid = TRUE;
 	NachOSpageTable[i].use = FALSE;
 	NachOSpageTable[i].dirty = FALSE;
@@ -94,10 +96,12 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *executable)
 					// a separate page, we could set its 
 					// pages to be read-only
     }
-    
+
 // zero out the entire address space, to zero the unitialized data segment 
 // and the stack segment
-    bzero(machine->mainMemory, size);
+    bzero(machine->mainMemory + machine->PhysPagesUsed * PageSize, size);
+
+    machine->PhysPagesUsed += numPagesInVM;     //Update Phys Pages used
 
 // then, copy in the code and data segments into memory
     if (noffH.code.size > 0) {
@@ -112,6 +116,50 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *executable)
         executable->ReadAt(&(machine->mainMemory[noffH.initData.virtualAddr]),
 			noffH.initData.size, noffH.initData.inFileAddr);
     }
+
+}
+
+//----------------------------------------------------------------------
+//ProcessAddrSpace::ProcessAddrSpace
+//  Constructs a Process address space with the specified number of pages
+//
+//  The method is same as the other constructor
+//
+//----------------------------------------------------------------------
+
+ProcessAddrSpace::ProcessAddrSpace(unsigned int NumPagesReqd)
+{
+    unsigned int i, size;
+
+    numPagesInVM = NumPagesReqd;
+    size = numPagesInVM * PageSize;
+
+    ASSERT(numPagesInVM + machine->PhysPagesUsed <= NumPhysPages);		                                            // check we're not trying
+						// to run anything too big --
+						// at least until we have
+						// virtual memory
+
+    DEBUG('a', "Initializing address space, num pages %d, size %d\n", 
+					numPagesInVM, size);
+// first, set up the translation 
+    NachOSpageTable = new TranslationEntry[numPagesInVM];
+    for (i = 0; i < numPagesInVM; i++) {
+	NachOSpageTable[i].virtualPage = i;	// virtual page # + physicalpages used = physical page #
+	NachOSpageTable[i].physicalPage = i + machine->PhysPagesUsed;
+	NachOSpageTable[i].valid = TRUE;
+	NachOSpageTable[i].use = FALSE;
+	NachOSpageTable[i].dirty = FALSE;
+	NachOSpageTable[i].readOnly = FALSE;  // if the code segment was entirely on 
+					// a separate page, we could set its
+					// pages to be read-only
+}
+
+    machine->PhysPagesUsed += numPagesInVM;     //update number of allotted
+                                                //physical pages
+
+// zero out the entire address space, to zero the unitialized data segment 
+// and the stack segment
+    bzero(machine->mainMemory + machine->PhysPagesUsed * PageSize, size);
 
 }
 
@@ -181,3 +229,39 @@ void ProcessAddrSpace::RestoreStateOnSwitch()
     machine->NachOSpageTable = NachOSpageTable;
     machine->pageTableSize = numPagesInVM;
 }
+
+//----------------------------------------------------------------------
+// ProcessAddrSpace::CopyAddrSpace
+//      While a fork operation, Copy the whole memory of the parent 
+//      thread to child thread so that child runs from the state 
+//      that parent was on right before the fork Syscall
+//
+//      Get starting physical addresses of both virtual memory
+//      through translate and copy one-one byte from the parent 
+//      to the child
+//----------------------------------------------------------------------
+
+void ProcessAddrSpace::CopyAddrSpace(ProcessAddrSpace *SourceSpace)
+{
+    ASSERT(interrupt->getLevel() == IntOff);
+
+    SourceSpace->RestoreStateOnSwitch();
+    ASSERT(numPagesInVM == machine->pageTableSize);
+
+    int PASourceSpace, PADestSpace;
+    unsigned int size = numPagesInVM * PageSize, i;
+
+    machine->Translate(0, &PASourceSpace, 1, FALSE);
+    ASSERT((PASourceSpace >= 0) && (PASourceSpace + size <= MemorySize));
+
+    this->RestoreStateOnSwitch();
+
+    machine->Translate(0, &PADestSpace, 1, TRUE);
+    ASSERT((PADestSpace >= 0) && (PADestSpace + size <= MemorySize));
+
+    for (i = 0; i < size; i++) {
+        machine->mainMemory[PADestSpace + i] =
+                        machine->mainMemory[PASourceSpace + i];
+    }
+}
+

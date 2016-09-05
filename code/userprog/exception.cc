@@ -330,10 +330,41 @@ ExceptionHandler(ExceptionType which)
         NachOSThread *newThread = new NachOSThread(buffer);
         newThread->setStatus(READY);
    
-        numPages = (machine->pageTableSize);    //numPages in thread which forked
+        numPages = (machine->pageTableSize);    //numPages in thread which
+                                                //forked
 
-        ASSERT(numPages + machine->PhysPagesUsed <= NumPhysPages);   //Check we're not trying to run anything too big - atleast until we have virtual memory
+        ASSERT(numPages + machine->PhysPagesUsed <= NumPhysPages);
+                                //Check we're not trying to run anything
+                                //too big - atleast until we have virtual
+                                //memory
 
+        oldstatus = interrupt->SetLevel(IntOff);    // Restore later
+        space = new ProcessAddrSpace(numPages);     // Process Address Space
+                                                    // for new thread
+
+        newThread->space = space;                   // New Address Space for
+        space->CopyAddrSpace(currentThread->space); // Child, Copying data
+        currentThread->space->RestoreStateOnSwitch();   // from parent
+                                                // thread's memory
+
+        // incrementing Program Counter
+        machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+        machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+        machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+
+        // Saving UserState for Child Process
+        machine->WriteRegister(2, 0);
+        newThread->SaveUserState();
+
+        // Allocating ThreadStack to kernel Thread
+        newThread->AllocateThreadStack(machine->CallOnScheduling, 0);
+
+        // Child Process added to ReadyQueue
+        scheduler->ThreadIsReadyToRun(newThread);
+
+        // Child's PID returned to Parent
+        machine->WriteRegister(2, newThread->getPID());
+        interrupt->SetLevel(oldstatus);
     } else {
         printf("Unexpected user mode exception %d %d\n", which, type);
         ASSERT(FALSE);

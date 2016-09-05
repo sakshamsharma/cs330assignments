@@ -23,13 +23,22 @@ class ProcessAddrSpace {
     ProcessAddrSpace(OpenFile *executable);	// Create an address space,
 					// initializing it with the program
 					// stored in the file "executable"
+
+    ProcessAddrSpace(unsigned int);     //Create an address space, used when
+                                        //threads forks and executable isn't
+                                        //available
+
     ~ProcessAddrSpace();			// De-allocate an address space
 
     void InitUserCPURegisters();		// Initialize user-level CPU registers,
 					// before jumping to user code
 
     void SaveStateOnSwitch();			// Save/restore address space-specific
-    void RestoreStateOnSwitch();		// info on a context switch 
+    void RestoreStateOnSwitch();		// info on a context switch
+
+    void CopyAddrSpace(ProcessAddrSpace *SourceSpace);
+                                        // Copy data from SourceSpace to
+                                        // current space
 
   private:
     TranslationEntry *NachOSpageTable;	// Assume linear page table translation
