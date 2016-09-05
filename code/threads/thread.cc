@@ -325,6 +325,20 @@ NachOSThread::RestoreUserState()
     for (int i = 0; i < NumTotalRegs; i++)
         machine->WriteRegister(i, userRegisters[i]);
 }
+
+//----------------------------------------------------------------------
+// NachOSThread::FetchFileName
+//  Takes a char pointer, allocates memory to it and stores the filename
+//  which is being currently executed on the thread
+//
+//----------------------------------------------------------------------
+
+void
+NachOSThread::FetchFileName(char *buffer)
+{
+    buffer = (char *)malloc(sizeof(char) * strlen(filename));
+    strcpy(buffer, filename);
+}
 #endif
 
 // Initializing non-const static member

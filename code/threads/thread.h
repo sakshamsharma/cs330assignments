@@ -132,10 +132,12 @@ private:
 
     int userRegisters[NumTotalRegs];    // user-level CPU register state
 
+    char filename*;                     // stores name of executable file which is running on the thread
+
 public:
     void SaveUserState();       // save user-level register state
     void RestoreUserState();        // restore user-level register state
-
+    void FetchFileName(char *buffer);   //returns executable filename in the buffer
     ProcessAddrSpace *space;            // User code this thread is running.
 #endif
 };
