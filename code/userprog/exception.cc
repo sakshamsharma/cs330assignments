@@ -76,8 +76,9 @@ ExceptionHandler(ExceptionType which)
     int type = machine->ReadRegister(2);
     int memval, vaddr, printval, tempval, exp;
     char buffer[257];
-    unsigned printvalus;        // Used for printing in hex
+    unsigned printvalus, numPages;        // Used for printing in hex
     IntStatus oldstatus;
+    ProcessAddrSpace *space;
     if (!initializedConsoleSemaphores) {
         readAvail = new Semaphore("read avail", 0);
         writeDone = new Semaphore("write done", 1);
@@ -322,6 +323,17 @@ ExceptionHandler(ExceptionType which)
         delete executable; // close file
 
         interrupt->SetLevel(oldstatus);
+    } else if ((which == SyscallException) && (type == SYScall_Fork)) {
+        //creating a new thread
+
+        tempval = sprintf(buffer, "Child of %d", currentThread->getPID());
+        NachOSThread *newThread = new NachOSThread(buffer);
+        newThread->setStatus(READY);
+   
+        numPages = (machine->pageTableSize);    //numPages in thread which forked
+
+        ASSERT(numPages + machine->PhysPagesUsed <= NumPhysPages);   //Check we're not trying to run anything too big - atleast until we have virtual memory
+
     } else {
         printf("Unexpected user mode exception %d %d\n", which, type);
         ASSERT(FALSE);

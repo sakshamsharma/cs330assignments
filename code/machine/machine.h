@@ -180,7 +180,7 @@ class Machine {
                     // "read-only" to Nachos kernel code
 
     TranslationEntry *NachOSpageTable;
-    unsigned int pageTableSize;
+    unsigned int pageTableSize, PhysPagesUsed;      //pageTablesSize of current running thread and total physical pages taken up by all threads
 
   private:
     bool singleStep;        // drop back into the debugger after each
