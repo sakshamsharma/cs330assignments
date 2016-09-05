@@ -71,6 +71,29 @@ static void ConvertIntToHex (unsigned v, Console *console)
 }
 
 void
+CallOnScheduling(int which)
+{
+    DEBUG('t', "Now in thread \"%s\"\n", currentThread->getName());
+
+    // If the old thread gave up the processor because it was finishing,
+    // we need to delete its carcass.  Note we cannot delete the thread
+    // before now (for example, in NachOSThread::FinishThread()), because
+    // up to this point, we were still running on the old thread's stack!
+    if (threadToBeDestroyed != NULL) {
+        delete threadToBeDestroyed;
+        threadToBeDestroyed = NULL;
+    }
+
+#ifdef USER_PROGRAM
+    if (currentThread->space != NULL) {     // if there is an address space
+        currentThread->RestoreUserState();     // to restore, do it.
+        currentThread->space->RestoreStateOnSwitch();
+    }
+#endif
+    machine->Run();
+}
+
+void
 ExceptionHandler(ExceptionType which)
 {
     int type = machine->ReadRegister(2);
@@ -78,7 +101,7 @@ ExceptionHandler(ExceptionType which)
     char buffer[257];
     unsigned printvalus, numPages;        // Used for printing in hex
     IntStatus oldstatus;
-    ProcessAddrSpace *space;
+    ProcessAddrSpace *NewSpace;
     if (!initializedConsoleSemaphores) {
         readAvail = new Semaphore("read avail", 0);
         writeDone = new Semaphore("write done", 1);
@@ -339,12 +362,12 @@ ExceptionHandler(ExceptionType which)
                                 //memory
 
         oldstatus = interrupt->SetLevel(IntOff);    // Restore later
-        space = new ProcessAddrSpace(numPages);     // Process Address Space
+        NewSpace = new ProcessAddrSpace(numPages);  // Process Address Space
                                                     // for new thread
 
-        newThread->space = space;                   // New Address Space for
-        space->CopyAddrSpace(currentThread->space); // Child, Copying data
-        currentThread->space->RestoreStateOnSwitch();   // from parent
+        newThread->space = NewSpace;             // New Address Space for
+        NewSpace->CopyAddrSpace(currentThread->space);   // Child, Copying 
+        currentThread->space->RestoreStateOnSwitch();    // data from parent
                                                 // thread's memory
 
         // incrementing Program Counter
@@ -355,16 +378,13 @@ ExceptionHandler(ExceptionType which)
         // Saving UserState for Child Process
         machine->WriteRegister(2, 0);
         newThread->SaveUserState();
+        interrupt->SetLevel(oldstatus);
 
-        // Allocating ThreadStack to kernel Thread
-        newThread->AllocateThreadStack(machine->CallOnScheduling, 0);
-
-        // Child Process added to ReadyQueue
-        scheduler->ThreadIsReadyToRun(newThread);
+        // Allocating ThreadStack to kernel Thread and adding to Ready Queue
+        newThread->ThreadFork(CallOnScheduling, 0);
 
         // Child's PID returned to Parent
         machine->WriteRegister(2, newThread->getPID());
-        interrupt->SetLevel(oldstatus);
     } else {
         printf("Unexpected user mode exception %d %d\n", which, type);
         ASSERT(FALSE);
