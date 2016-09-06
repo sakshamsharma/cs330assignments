@@ -414,7 +414,7 @@ ExceptionHandler(ExceptionType which)
         currentThread->FinishThread();
         // TODO Check if we have to HALT in case of no other process
     } else if ((which == SyscallException) && (type == SYScall_NumInstr)) {
-        machine->WriteRegister(4, currentThread->GetInstructionCount());
+        machine->WriteRegister(2, currentThread->GetInstructionCount());
 
         // incrementing Program Counter
         machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
