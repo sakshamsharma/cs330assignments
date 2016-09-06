@@ -155,7 +155,6 @@ NachOSscheduler::Print()
 // "tillTicks" is the time (in ticks) when thread has to be woken up
 //----------------------------------------------------------------------
 void NachOSscheduler::AddToSleepList(void *thread, int tillTicks) {
-    printf("Sleeping a thread till %d\n", tillTicks);
     sleepingThreadList->SortedInsert(thread, tillTicks);
 }
 

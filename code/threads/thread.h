@@ -112,6 +112,7 @@ private:
     // (If NULL, don't deallocate stack)
     ThreadStatus status;        // ready, running or blocked
     char* name;
+    NachOSThread *parentThread;
 
     void AllocateThreadStack(VoidFunctionPtr func, int arg);
     // Allocate a stack for thread.

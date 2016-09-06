@@ -42,8 +42,12 @@ NachOSThread::NachOSThread(char* threadName)
     pid = getUniquePid();
     if (pid == 1) {
         ppid[pid] = 0;
+
+        // WARNING Do not access parent of init
+        parentThread = NULL;
     } else {
         ppid[pid] = currentThread->getPID();
+        parentThread = currentThread;
     }
 
 #ifdef USER_PROGRAM
@@ -155,6 +159,11 @@ NachOSThread::FinishThread ()
     ASSERT(this == currentThread);
 
     DEBUG('t', "Finishing thread \"%s\"\n", getName());
+
+    // Since we are in the process' context and can access pid
+    if (ifJoinWithParent[pid]) {
+        scheduler->ThreadIsReadyToRun(parentThread);
+    }
 
     threadToBeDestroyed = currentThread;
     PutThreadToSleep();                 // invokes SWITCH

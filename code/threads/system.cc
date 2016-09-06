@@ -88,6 +88,11 @@ Initialize(int argc, char **argv)
     char* debugArgs = "";
     bool randomYield = FALSE;
 
+    for (int i=0; i<NumPhysPages; i++) {
+        exitStatus[i] = -1;
+        ifJoinWithParent[i] = false;
+    }
+
     initializedConsoleSemaphores = false;
 
 #ifdef USER_PROGRAM

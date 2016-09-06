@@ -385,7 +385,32 @@ ExceptionHandler(ExceptionType which)
 
         // Child's PID returned to Parent
         machine->WriteRegister(2, newThread->getPID());
+    } else if ((which == SyscallException) && (type == SYScall_Join)) {
+        tempval = machine->ReadRegister(4);
+
+        // tempval is not the child of currentThread
+        if (currentThread->getPID() != ppid[tempval]) {
+            machine->WriteRegister(2, -1);
+        } else {
+            if (exitStatus[tempval] == -1) {
+                // Child is yet to exit
+                ifJoinWithParent[tempval] = true;
+
+                oldstatus = interrupt->SetLevel(IntOff);
+                currentThread->PutThreadToSleep();
+                interrupt->SetLevel(oldstatus);
+            } else {
+                // Child has already exited
+                machine->WriteRegister(2, exitStatus[tempval]);
+            }
+        }
+
+        // incrementing Program Counter
+        machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+        machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+        machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
     } else if ((which == SyscallException) && (type == SYScall_Exit)) {
+        exitStatus[currentThread->getPID()] = machine->ReadRegister(4);
         currentThread->FinishThread();
         // TODO Check if we have to HALT in case of no other process
     } else {
