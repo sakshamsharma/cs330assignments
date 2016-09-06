@@ -25,7 +25,7 @@ class ProcessAddrSpace {
 					// stored in the file "executable"
 
     ProcessAddrSpace(unsigned int);     //Create an address space, used when
-                                        //threads fork and executable isn't
+                                        //threads forks and executable isn't
                                         //available
 
     ~ProcessAddrSpace();			// De-allocate an address space
