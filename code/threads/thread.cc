@@ -327,6 +327,7 @@ NachOSThread::RestoreUserState()
 }
 #endif
 
+// Initializing non-const static member
 int NachOSThread::lastPid = 0;
 
 // Returns a fresh new PID for a newly forked thread

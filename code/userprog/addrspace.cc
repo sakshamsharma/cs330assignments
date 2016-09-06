@@ -154,12 +154,12 @@ ProcessAddrSpace::ProcessAddrSpace(unsigned int NumPagesReqd)
 					// pages to be read-only
 }
 
-    machine->PhysPagesUsed += numPagesInVM;     //update number of allotted
-                                                //physical pages
-
 // zero out the entire address space, to zero the unitialized data segment 
 // and the stack segment
     bzero(machine->mainMemory + machine->PhysPagesUsed * PageSize, size);
+
+    //update number of allotted physical pages
+    machine->PhysPagesUsed += numPagesInVM;
 
 }
 
