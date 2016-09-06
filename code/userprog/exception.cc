@@ -275,7 +275,7 @@ ExceptionHandler(ExceptionType which)
         machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
     } else if ((which == SyscallException) && (type == SYScall_GetPPID)) {
         // We need to get the calling thread's PID
-        machine->WriteRegister(2, currentThread->getPPID());
+        machine->WriteRegister(2, ppid[currentThread->getPID()]);
 
         // Advance program counters.
         machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));

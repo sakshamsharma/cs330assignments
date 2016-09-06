@@ -103,7 +103,6 @@ public:
     void Print() { printf("%s, ", name); }
 
     int getPID();   // Return the private PID(
-    int getPPID();  // Return the PID of parent of the current thead 
 
 private:
     // some of the private data for this class is listed above
@@ -118,7 +117,7 @@ private:
     // Allocate a stack for thread.
     // Used internally by ThreadFork()
 
-    int pid, ppid;          // My pid and my parent's pid
+    int pid;          // PID of thread
 
     int getUniquePid();     // Interface to getting a new PID
 

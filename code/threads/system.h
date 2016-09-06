@@ -15,6 +15,7 @@
 #include "interrupt.h"
 #include "stats.h"
 #include "timer.h"
+#include "machine.h"
 
 // Initialization and cleanup routines
 extern void Initialize(int argc, char **argv);  // Initialization,
@@ -28,6 +29,11 @@ extern NachOSscheduler *scheduler;          // the thread scheduler
 extern Interrupt *interrupt;            // interrupt status
 extern Statistics *stats;           // performance metrics
 extern Timer *timer;                // the hardware alarm clock
+extern bool ifJoinWithParent[NumPhysPages]; // Whether to join
+                                     // with parent on exit
+extern int ppid[NumPhysPages]; // PPID of thread
+extern int exitStatus[NumPhysPages]; // Exit status of process
+
 
 extern bool initializedConsoleSemaphores;       // Used to initialize the semaphores for console I/O exactly once
 

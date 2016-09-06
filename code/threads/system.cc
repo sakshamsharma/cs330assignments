@@ -18,6 +18,10 @@ Interrupt *interrupt;           // interrupt status
 Statistics *stats;          // performance metrics
 Timer *timer;               // the hardware timer device,
                     // for invoking context switches
+bool ifJoinWithParent[NumPhysPages]; // Whether to join
+                                     // with parent on exit
+int ppid[NumPhysPages]; // PPID of thread
+int exitStatus[NumPhysPages]; // Exit status of process
 
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
