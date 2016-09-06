@@ -102,7 +102,10 @@ public:
     char* getName() { return (name); }
     void Print() { printf("%s, ", name); }
 
-    int getPID();   // Return the private PID(
+    int getPID();   // Return the private PID
+
+    void IncrementInstructionCount();
+    int GetInstructionCount();
 
 private:
     // some of the private data for this class is listed above
@@ -121,6 +124,8 @@ private:
     int pid;          // PID of thread
 
     int getUniquePid();     // Interface to getting a new PID
+
+    int instructionCount; // Count of instructions run till now
 
     static int lastPid;     // Static member, only one instance across
                             // all threads

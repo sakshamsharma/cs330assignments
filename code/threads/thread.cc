@@ -38,6 +38,7 @@ NachOSThread::NachOSThread(char* threadName)
     stackTop = NULL;
     stack = NULL;
     status = JUST_CREATED;
+    instructionCount = 0;
 
     runningProcesses++;
 
@@ -360,4 +361,12 @@ int NachOSThread::getUniquePid() {
 // Return the private variable PID
 int NachOSThread::getPID() {
     return pid;
+}
+
+void NachOSThread::IncrementInstructionCount() {
+    instructionCount++;
+};
+
+int NachOSThread::GetInstructionCount() {
+    return instructionCount;
 }
