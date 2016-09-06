@@ -352,7 +352,7 @@ ExceptionHandler(ExceptionType which)
         tempval = sprintf(buffer, "Child of %d", currentThread->getPID());
         NachOSThread *newThread = new NachOSThread(buffer);
         newThread->setStatus(READY);
-   
+
         numPages = (machine->pageTableSize);    //numPages in thread which
                                                 //forked
 
@@ -366,7 +366,7 @@ ExceptionHandler(ExceptionType which)
                                                     // for new thread
 
         newThread->space = NewSpace;             // New Address Space for
-        NewSpace->CopyAddrSpace(currentThread->space);   // Child, Copying 
+        NewSpace->CopyAddrSpace(currentThread->space);   // Child, Copying
         currentThread->space->RestoreStateOnSwitch();    // data from parent
                                                 // thread's memory
 
@@ -385,6 +385,9 @@ ExceptionHandler(ExceptionType which)
 
         // Child's PID returned to Parent
         machine->WriteRegister(2, newThread->getPID());
+    } else if ((which == SyscallException) && (type == SYScall_Exit)) {
+        currentThread->FinishThread();
+        // TODO Check if we have to HALT in case of no other process
     } else {
         printf("Unexpected user mode exception %d %d\n", which, type);
         ASSERT(FALSE);
