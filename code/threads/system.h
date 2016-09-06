@@ -33,6 +33,7 @@ extern bool ifJoinWithParent[NumPhysPages]; // Whether to join
                                      // with parent on exit
 extern int ppid[NumPhysPages]; // PPID of thread
 extern int exitStatus[NumPhysPages]; // Exit status of process
+extern int runningProcesses;
 
 
 extern bool initializedConsoleSemaphores;       // Used to initialize the semaphores for console I/O exactly once

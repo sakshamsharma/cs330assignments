@@ -22,6 +22,7 @@ bool ifJoinWithParent[NumPhysPages]; // Whether to join
                                      // with parent on exit
 int ppid[NumPhysPages]; // PPID of thread
 int exitStatus[NumPhysPages]; // Exit status of process
+int runningProcesses; // Count of processes running
 
 #ifdef FILESYS_NEEDED
 FileSystem  *fileSystem;
@@ -92,6 +93,7 @@ Initialize(int argc, char **argv)
         exitStatus[i] = -1;
         ifJoinWithParent[i] = false;
     }
+    runningProcesses = 0;
 
     initializedConsoleSemaphores = false;
 

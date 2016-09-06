@@ -39,6 +39,8 @@ NachOSThread::NachOSThread(char* threadName)
     stack = NULL;
     status = JUST_CREATED;
 
+    runningProcesses++;
+
     pid = getUniquePid();
     if (pid == 1) {
         ppid[pid] = 0;
@@ -72,6 +74,9 @@ NachOSThread::~NachOSThread()
     DEBUG('t', "Deleting thread \"%s\"\n", name);
 
     ASSERT(this != currentThread);
+    ASSERT(runningProcesses > 0);
+
+    runningProcesses--;
     if (stack != NULL)
         DeallocBoundedArray((char *) stack, StackSize * sizeof(int));
 }
@@ -166,6 +171,12 @@ NachOSThread::FinishThread ()
     }
 
     threadToBeDestroyed = currentThread;
+
+    // Only 1 process is left
+    if (runningProcesses == 1) {
+        interrupt->Halt();
+    }
+
     PutThreadToSleep();                 // invokes SWITCH
     // not reached
 }
