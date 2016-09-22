@@ -70,8 +70,7 @@ static void ConvertIntToHex (unsigned v, Console *console)
     }
 }
 
-void
-CallOnScheduling(int which)
+void CallOnFirstSchedule(int which)
 {
     DEBUG('t', "Now in thread \"%s\"\n", currentThread->getName());
 
@@ -420,7 +419,7 @@ ExceptionHandler(ExceptionType which)
             interrupt->SetLevel(oldstatus);
 
             // Allocating ThreadStack to kernel Thread and adding to Ready Queue
-            newThread->ThreadFork(CallOnScheduling, 0);
+            newThread->ThreadFork(CallOnFirstSchedule, 0);
 
             // Child's PID returned to Parent
             machine->WriteRegister(2, newThread->getPID());
