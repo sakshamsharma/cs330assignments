@@ -203,19 +203,16 @@ ExceptionHandler(ExceptionType which)
         // Arguments passed in register 4 by convention
         int virtAddr = machine->ReadRegister(4);
 
-        // TODO Decide if these variables should be global or stay
-        int i;
-        unsigned int vpn, offset;
+        int i, vpn, offset, pageFrame;
         TranslationEntry *entry;
-        unsigned int pageFrame;
-        bool found = false;
+        bool found = false, error = false;
 
         // Calculate the virtual page number, and offset within the
         // page from the virtual address
-        vpn = (unsigned) virtAddr / PageSize;
+        vpn = virtAddr / PageSize;
 
         if (vpn < machine->pageTableSize) {
-            offset = (unsigned) virtAddr % PageSize;
+            offset = virtAddr % PageSize;
 
             if (machine->tlb == NULL) {
                 // => page table => vpn is index into table
@@ -225,7 +222,6 @@ ExceptionHandler(ExceptionType which)
                 }
             } else {
                 for (entry = NULL, i = 0; i < TLBSize; i++)
-                    // TODO Generates compiler warning. Investigate
                     if (machine->tlb[i].valid &&
                         (machine->tlb[i].virtualPage == vpn)) {
                         entry = &machine->tlb[i];
@@ -235,27 +231,32 @@ ExceptionHandler(ExceptionType which)
             }
 
             if (found) {
+                // PageFrame (i.e. Physical page number) is
+                // now the found entry's phy page number
                 pageFrame = entry->physicalPage;
 
                 if (pageFrame < NumPhysPages) {
                     // Everything went fine
-                    entry->use = TRUE;      // set the use, dirty bits
                     machine->WriteRegister(2, pageFrame * PageSize + offset);
 
                 } else {
                     // ERROR 1 CATCH
                     // Physical page number was larger than num of
                     // phyical pages
-                    machine->WriteRegister(2, -1);
+                    error = true;
                 }
             } else {
                 // ERROR 2 CATCH
                 // The for loop didn't find a valid page table entry
-                machine->WriteRegister(2, -1);
+                error = true;
             }
         } else {
             // ERROR 3 CATCH
             // Virtual page number >= number of entries in page table
+            error = true;
+        }
+
+        if (error) {
             machine->WriteRegister(2, -1);
         }
 
