@@ -192,8 +192,6 @@ ExceptionHandler(ExceptionType which)
 
         // Also, error checking (that the register number is valid)
         // has been done in machine.cc file's ReadRegister function
-
-        // TODO Figure out if unsigned is needed
         machine->WriteRegister(2, (machine->ReadRegister(machine->ReadRegister(4))));
 
         // Advance program counters.
@@ -350,8 +348,6 @@ ExceptionHandler(ExceptionType which)
         //creating a new thread
 
         tempval = sprintf(buffer, "Child of %d", currentThread->getPID());
-        NachOSThread *newThread = new NachOSThread(buffer);
-        newThread->setStatus(READY);
 
         numPages = (machine->pageTableSize);    //numPages in thread which
                                                 //forked
@@ -362,29 +358,48 @@ ExceptionHandler(ExceptionType which)
                                 //memory
 
         oldstatus = interrupt->SetLevel(IntOff);    // Restore later
-        NewSpace = new ProcessAddrSpace(numPages);  // Process Address Space
-                                                    // for new thread
 
-        newThread->space = NewSpace;             // New Address Space for
-        NewSpace->CopyAddrSpace(currentThread->space);   // Child, Copying
-        currentThread->space->RestoreStateOnSwitch();    // data from parent
-                                                // thread's memory
+        // Create new address space for new thread
+        // tempval is passed by reference
+        NewSpace = new ProcessAddrSpace(numPages, tempval);
+        if (tempval == -1) {
+            delete NewSpace;
 
-        // incrementing Program Counter
-        machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
-        machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
-        machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+            // Write an error to the return register
+            machine->WriteRegister(2, -1);
+            DEBUG('a', "Error while forking\n");
 
-        // Saving UserState for Child Process
-        machine->WriteRegister(2, 0);
-        newThread->SaveUserState();
-        interrupt->SetLevel(oldstatus);
+            // incrementing Program Counter
+            machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+            machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+            machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+        } else {
+            // There was no error while creating address space
+            NachOSThread *newThread = new NachOSThread(buffer);
+            newThread->setStatus(READY);
 
-        // Allocating ThreadStack to kernel Thread and adding to Ready Queue
-        newThread->ThreadFork(CallOnScheduling, 0);
+            newThread->space = NewSpace;             // New Address Space for
+            NewSpace->CopyAddrSpace(currentThread->space);   // Child, Copying
+            currentThread->space->RestoreStateOnSwitch();    // data from parent
+            // thread's memory
 
-        // Child's PID returned to Parent
-        machine->WriteRegister(2, newThread->getPID());
+            // incrementing Program Counter
+            machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+            machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+            machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+
+            // Saving UserState for Child Process
+            machine->WriteRegister(2, 0);
+            newThread->SaveUserState();
+            interrupt->SetLevel(oldstatus);
+
+            // Allocating ThreadStack to kernel Thread and adding to Ready Queue
+            newThread->ThreadFork(CallOnScheduling, 0);
+
+            // Child's PID returned to Parent
+            machine->WriteRegister(2, newThread->getPID());
+        }
+
     } else if ((which == SyscallException) && (type == SYScall_Join)) {
         tempval = machine->ReadRegister(4);
 
@@ -410,9 +425,11 @@ ExceptionHandler(ExceptionType which)
         machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
         machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
     } else if ((which == SyscallException) && (type == SYScall_Exit)) {
+
         exitStatus[currentThread->getPID()] = machine->ReadRegister(4);
+
+        // Also halts if no process remaining
         currentThread->FinishThread();
-        // TODO Check if we have to HALT in case of no other process
     } else if ((which == SyscallException) && (type == SYScall_NumInstr)) {
         machine->WriteRegister(2, currentThread->GetInstructionCount());
 

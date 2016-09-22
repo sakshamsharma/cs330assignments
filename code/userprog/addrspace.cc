@@ -126,21 +126,26 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *executable)
 //
 //----------------------------------------------------------------------
 
-ProcessAddrSpace::ProcessAddrSpace(unsigned int NumPagesReqd)
+ProcessAddrSpace::ProcessAddrSpace(unsigned int NumPagesReqd, int& error)
 {
     unsigned int i, size;
+    error = 0;
 
     numPagesInVM = NumPagesReqd;
     size = numPagesInVM * PageSize;
 
-    ASSERT(numPagesInVM + machine->PhysPagesUsed <= NumPhysPages);                                                  // check we're not trying
-    // to run anything too big --
-    // at least until we have
-    // virtual memory
+    // check we're not trying to run anything too big --
+    // at least until we have virtual memory
+    if (!(numPagesInVM + machine->PhysPagesUsed <= NumPhysPages)) {
+        // Return error by reference
+        error = -1;
+        return;
+    }
 
-    DEBUG('a', "Initializing address space, num pages %d, size %d\n",
+    DEBUG('a', "Initializing address space for copying, num pages %d, size %d\n",
           numPagesInVM, size);
-// first, set up the translation
+
+    // first, set up the translation
     NachOSpageTable = new TranslationEntry[numPagesInVM];
     for (i = 0; i < numPagesInVM; i++) {
         NachOSpageTable[i].virtualPage = i; // virtual page # + physicalpages used = physical page #
@@ -156,13 +161,12 @@ ProcessAddrSpace::ProcessAddrSpace(unsigned int NumPagesReqd)
         // NachOSpageTable and shouldn't be defined to default.
     }
 
-// zero out the entire address space, to zero the unitialized data segment
-// and the stack segment
+    // zero out the entire address space, to zero the unitialized data segment
+    // and the stack segment
     bzero(machine->mainMemory + machine->PhysPagesUsed * PageSize, size);
 
     //update number of allotted physical pages
     machine->PhysPagesUsed += numPagesInVM;
-
 }
 
 //----------------------------------------------------------------------
@@ -247,18 +251,32 @@ void ProcessAddrSpace::CopyAddrSpace(ProcessAddrSpace *SourceSpace)
 {
     ASSERT(interrupt->getLevel() == IntOff);
 
+    // So that subsequent translations work in context of
+    // this source address space
     SourceSpace->RestoreStateOnSwitch();
+
+    // numPages in the Virtual memory should have been set
+    // for this thread
     ASSERT(numPagesInVM == machine->pageTableSize);
 
     int PASourceSpace, PADestSpace;
     unsigned int size = numPagesInVM * PageSize, i;
 
+    // Converts 0 virtual address to phy address
+    // stores it in PASourceSpace
     machine->Translate(0, &PASourceSpace, 1, FALSE);
+
+    // Page table's size should not exceed memory size
     ASSERT((PASourceSpace >= 0) && (PASourceSpace + size <= MemorySize));
 
+    // Set machine to state of newly created addr space
+    // For the next translate command
     this->RestoreStateOnSwitch();
 
+    // Find phy address of 0 in the newly created address space
+    // This is where we will copy the source space
     machine->Translate(0, &PADestSpace, 1, TRUE);
+
     ASSERT((PADestSpace >= 0) && (PADestSpace + size <= MemorySize));
 
     for (i = 0; i < size; i++) {

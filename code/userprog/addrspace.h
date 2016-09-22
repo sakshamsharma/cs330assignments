@@ -24,7 +24,7 @@ class ProcessAddrSpace {
 					// initializing it with the program
 					// stored in the file "executable"
 
-    ProcessAddrSpace(unsigned int);     //Create an address space, used when
+    ProcessAddrSpace(unsigned int, int&);     //Create an address space, used when
                                         //threads forks and executable isn't
                                         //available
 
@@ -44,7 +44,7 @@ class ProcessAddrSpace {
     TranslationEntry *NachOSpageTable;	// Assume linear page table translation
 					// for now!
     unsigned int numPagesInVM;		// Number of pages in the virtual 
-					// address space
+					                // address space
 };
 
 #endif // ADDRSPACE_H
