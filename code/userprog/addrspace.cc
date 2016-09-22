@@ -57,10 +57,11 @@ SwapHeader (NoffHeader *noffH)
 //  "executable" is the file containing the object code to load into memory
 //----------------------------------------------------------------------
 
-ProcessAddrSpace::ProcessAddrSpace(OpenFile *executable)
+ProcessAddrSpace::ProcessAddrSpace(OpenFile *executable, int& error)
 {
     NoffHeader noffH;
     unsigned int i, size;
+    error = 0;
 
     executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
     if ((noffH.noffMagic != NOFFMAGIC) &&
@@ -68,22 +69,25 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *executable)
         SwapHeader(&noffH);
     ASSERT(noffH.noffMagic == NOFFMAGIC);
 
-// how big is address space?
+    // how big is address space?
     size = noffH.code.size + noffH.initData.size + noffH.uninitData.size
         + UserStackSize;    // we need to increase the size
     // to leave room for the stack
     numPagesInVM = divRoundUp(size, PageSize);
     size = numPagesInVM * PageSize;
 
-    ASSERT(numPagesInVM + machine->PhysPagesUsed <= NumPhysPages);
-    // check we're not trying
-    // to run anything too big --
-    // at least until we have
-    // virtual memory
+    // check we're not trying to run anything too big --
+    // at least until we have virtual memory
+    if (!(numPagesInVM + machine->PhysPagesUsed <= NumPhysPages)) {
+        // Return error by reference
+        error = -1;
+        return;
+    }
 
     DEBUG('a', "Initializing address space, num pages %d, size %d\n",
           numPagesInVM, size);
-// first, set up the translation
+
+    // first, set up the translation
     NachOSpageTable = new TranslationEntry[numPagesInVM];
     for (i = 0; i < numPagesInVM; i++) {
         NachOSpageTable[i].virtualPage = i; // virtual page # + Physical
@@ -97,11 +101,11 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *executable)
         // pages to be read-only
     }
 
-// zero out the entire address space, to zero the unitialized data segment
-// and the stack segment
+    // zero out the entire address space, to zero the unitialized data segment
+    // and the stack segment
     bzero(machine->mainMemory + machine->PhysPagesUsed * PageSize, size);
 
-// then, copy in the code and data segments into memory
+    // then, copy in the code and data segments into memory
     if (noffH.code.size > 0) {
         DEBUG('a', "Initializing code segment, at 0x%x, size %d\n",
               noffH.code.virtualAddr, noffH.code.size);
@@ -147,18 +151,22 @@ ProcessAddrSpace::ProcessAddrSpace(unsigned int NumPagesReqd, int& error)
 
     // first, set up the translation
     NachOSpageTable = new TranslationEntry[numPagesInVM];
+
+    // Set the virtual and physical addresses of the pages
+    // in this newly created address space translation entry
     for (i = 0; i < numPagesInVM; i++) {
         NachOSpageTable[i].virtualPage = i; // virtual page # + physicalpages used = physical page #
         NachOSpageTable[i].physicalPage = i + machine->PhysPagesUsed;
+
+        // Temporarily set these values to default
+        // to aid later translation requests in CopyAddrSpace
         NachOSpageTable[i].valid = TRUE;
         NachOSpageTable[i].use = FALSE;
         NachOSpageTable[i].dirty = FALSE;
-        NachOSpageTable[i].readOnly = FALSE;  // if the code segment was entirely on
-        // a separate page, we could set its
-        // pages to be read-only
-
-        // TODO The above parameters should be copied from the parent's
-        // NachOSpageTable and shouldn't be defined to default.
+        NachOSpageTable[i].readOnly = FALSE;
+        // These flags will later be copied from the SourceSpace
+        // in the CopyAddrSpace routine, and these default values
+        // would be overwritten
     }
 
     // zero out the entire address space, to zero the unitialized data segment
@@ -277,7 +285,8 @@ void ProcessAddrSpace::CopyAddrSpace(ProcessAddrSpace *SourceSpace)
     // This is where we will copy the source space
     machine->Translate(0, &PADestSpace, 1, TRUE);
 
-    ASSERT((PADestSpace >= 0) && (PADestSpace + size <= MemorySize));
+    ASSERT(PADestSpace >= 0);
+    ASSERT(PADestSpace + size <= MemorySize)
 
     for (i = 0; i < size; i++) {
         machine->mainMemory[PADestSpace + i] =
@@ -294,7 +303,7 @@ void ProcessAddrSpace::CopyAddrSpace(ProcessAddrSpace *SourceSpace)
 // Copy the private page table flags to the supplied location
 // Require this because NachOSPageTable is private member
 void ProcessAddrSpace::CopyFlagsToPageTableNamed(TranslationEntry *DestPageTable) {
-    for (int i = 0; i < numPagesInVM; i++) {
+    for (unsigned int i = 0; i < numPagesInVM; i++) {
         DestPageTable[i].valid = NachOSpageTable[i].valid;
         DestPageTable[i].use = NachOSpageTable[i].use;
         DestPageTable[i].dirty = NachOSpageTable[i].dirty;

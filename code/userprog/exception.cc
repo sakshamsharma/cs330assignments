@@ -305,13 +305,15 @@ ExceptionHandler(ExceptionType which)
         machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
     } else if ((which == SyscallException) && (type == SYScall_Yield)) {
         currentThread->YieldCPU();
-        // TODO Should we send a return value?
+        // Never fails
+        // declared void, so does not return anything
 
         // Advance program counters.
         machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
         machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
         machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
     } else if ((which == SyscallException) && (type == SYScall_Exec)) {
+
         oldstatus = interrupt->SetLevel(IntOff); // Restore later
         tempval = 0;
 
@@ -330,6 +332,7 @@ ExceptionHandler(ExceptionType which)
         if (executable == NULL) {
             // Returns if exev failed
             machine->WriteRegister(2, -1);
+            DEBUG('a', "Tried to exec non existant file\n");
 
             // Advance program counters.
             machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
@@ -337,14 +340,36 @@ ExceptionHandler(ExceptionType which)
             machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
         }
 
-        delete currentThread->space;
-        currentThread->space = new ProcessAddrSpace(executable);
-        currentThread->space->InitUserCPURegisters(); // init reg vals
-        currentThread->space->RestoreStateOnSwitch(); // page table
-                                                      // register
+        NewSpace = new ProcessAddrSpace(executable, tempval);
         delete executable; // close file
 
-        interrupt->SetLevel(oldstatus);
+        if (tempval == -1) {
+            // Exec failed
+            delete NewSpace;
+
+            // Write an error to the return register
+            machine->WriteRegister(2, -1);
+            DEBUG('a', "Error while execing\n");
+
+            // incrementing Program Counter
+            machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
+            machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
+            machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+        } else {
+
+            // New space got allocated
+            delete currentThread->space;
+            currentThread->space = NewSpace;
+
+            // init register vals
+            currentThread->space->InitUserCPURegisters();
+
+            // page table register
+            currentThread->space->RestoreStateOnSwitch();
+
+            interrupt->SetLevel(oldstatus);
+        }
+
     } else if ((which == SyscallException) && (type == SYScall_Fork)) {
         //creating a new thread
 

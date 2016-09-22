@@ -20,7 +20,7 @@
 
 class ProcessAddrSpace {
   public:
-    ProcessAddrSpace(OpenFile *executable);	// Create an address space,
+    ProcessAddrSpace(OpenFile *executable, int &error);	// Create an address space,
 					// initializing it with the program
 					// stored in the file "executable"
 
