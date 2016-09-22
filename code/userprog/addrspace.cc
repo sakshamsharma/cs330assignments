@@ -283,4 +283,21 @@ void ProcessAddrSpace::CopyAddrSpace(ProcessAddrSpace *SourceSpace)
         machine->mainMemory[PADestSpace + i] =
             machine->mainMemory[PASourceSpace + i];
     }
+
+    // Since we cannot access Page table of SourceSpace
+    // but we need to copy the flags anyway
+    // We will provide pointer to the newly created page table
+    // and let the source space copy it's own flags to that location
+    SourceSpace->CopyFlagsToPageTableNamed(NachOSpageTable);
+}
+
+// Copy the private page table flags to the supplied location
+// Require this because NachOSPageTable is private member
+void ProcessAddrSpace::CopyFlagsToPageTableNamed(TranslationEntry *DestPageTable) {
+    for (int i = 0; i < numPagesInVM; i++) {
+        DestPageTable[i].valid = NachOSpageTable[i].valid;
+        DestPageTable[i].use = NachOSpageTable[i].use;
+        DestPageTable[i].dirty = NachOSpageTable[i].dirty;
+        DestPageTable[i].readOnly = NachOSpageTable[i].readOnly;
+    }
 }

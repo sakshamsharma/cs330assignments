@@ -40,6 +40,9 @@ class ProcessAddrSpace {
                                         // Copy data from SourceSpace to
                                         // current space
 
+    // Copy the private page table flags to the supplied location
+    void CopyFlagsToPageTableNamed(TranslationEntry *DestPageTable);
+
   private:
     TranslationEntry *NachOSpageTable;	// Assume linear page table translation
 					// for now!
