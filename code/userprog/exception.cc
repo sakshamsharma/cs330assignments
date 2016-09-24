@@ -318,7 +318,7 @@ ExceptionHandler(ExceptionType which)
 
         vaddr = machine->ReadRegister(4);
         machine->ReadMem(vaddr, 1, &memval);
-        while ((*(char*)&memval) != '\0') {
+        while ((*(char*)&memval) != '\0' && tempval < 256) {
             buffer[tempval] = (*(char*)&memval);
             tempval++;          // Buffer position being written to
             vaddr++;            // Virtual address being read
