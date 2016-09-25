@@ -438,6 +438,7 @@ ExceptionHandler(ExceptionType which)
 
                 oldstatus = interrupt->SetLevel(IntOff);
                 currentThread->PutThreadToSleep();
+                machine->WriteRegister(2, exitStatus[tempval]);
                 interrupt->SetLevel(oldstatus);
             } else {
                 // Child has already exited
