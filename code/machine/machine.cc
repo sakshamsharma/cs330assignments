@@ -1,5 +1,5 @@
 // machine.cc
-//	Routines for simulating the execution of user programs.
+//  Routines for simulating the execution of user programs.
 //
 //  DO NOT CHANGE -- part of the machine emulation
 //
@@ -24,8 +24,8 @@ static char *exceptionNames[] = {"no exception",
 
 //----------------------------------------------------------------------
 // CheckEndian
-// 	Check to be sure that the host really uses the format it says it
-//	does, for storing the bytes of an integer.  Stop on error.
+//  Check to be sure that the host really uses the format it says it
+//  does, for storing the bytes of an integer.  Stop on error.
 //----------------------------------------------------------------------
 
 static void CheckEndian() {
@@ -48,10 +48,10 @@ static void CheckEndian() {
 
 //----------------------------------------------------------------------
 // Machine::Machine
-// 	Initialize the simulation of user program execution.
+//  Initialize the simulation of user program execution.
 //
-//	"debug" -- if TRUE, drop into the debugger after each user instruction
-//		is executed.
+//  "debug" -- if TRUE, drop into the debugger after each user instruction
+//      is executed.
 //----------------------------------------------------------------------
 
 Machine::Machine(bool debug) {
@@ -78,7 +78,7 @@ Machine::Machine(bool debug) {
 
 //----------------------------------------------------------------------
 // Machine::~Machine
-// 	De-allocate the data structures used to simulate user program execution.
+//  De-allocate the data structures used to simulate user program execution.
 //----------------------------------------------------------------------
 
 Machine::~Machine() {
@@ -89,12 +89,12 @@ Machine::~Machine() {
 
 //----------------------------------------------------------------------
 // Machine::RaiseException
-// 	Transfer control to the Nachos kernel from user mode, because
-//	the user program either invoked a system call, or some exception
-//	occured (such as the address translation failed).
+//  Transfer control to the Nachos kernel from user mode, because
+//  the user program either invoked a system call, or some exception
+//  occured (such as the address translation failed).
 //
-//	"which" -- the cause of the kernel trap
-//	"badVaddr" -- the virtual address causing the trap, if appropriate
+//  "which" -- the cause of the kernel trap
+//  "badVaddr" -- the virtual address causing the trap, if appropriate
 //----------------------------------------------------------------------
 
 void Machine::RaiseException(ExceptionType which, int badVAddr) {
@@ -110,12 +110,12 @@ void Machine::RaiseException(ExceptionType which, int badVAddr) {
 
 //----------------------------------------------------------------------
 // Machine::Debugger
-// 	Primitive debugger for user programs.  Note that we can't use
-//	gdb to debug user programs, since gdb doesn't run on top of Nachos.
-//	It could, but you'd have to implement *a lot* more system calls
-//	to get it to work!
+//  Primitive debugger for user programs.  Note that we can't use
+//  gdb to debug user programs, since gdb doesn't run on top of Nachos.
+//  It could, but you'd have to implement *a lot* more system calls
+//  to get it to work!
 //
-//	So just allow single-stepping, and printing the contents of memory.
+//  So just allow single-stepping, and printing the contents of memory.
 //----------------------------------------------------------------------
 
 void Machine::Debugger() {
@@ -153,8 +153,8 @@ void Machine::Debugger() {
 
 //----------------------------------------------------------------------
 // Machine::DumpState
-// 	Print the user program's CPU state.  We might print the contents
-//	of memory, but that seemed like overkill.
+//  Print the user program's CPU state.  We might print the contents
+//  of memory, but that seemed like overkill.
 //----------------------------------------------------------------------
 
 void Machine::DumpState() {
@@ -188,7 +188,7 @@ void Machine::DumpState() {
 
 //----------------------------------------------------------------------
 // Machine::ReadRegister/WriteRegister
-//   	Fetch or write the contents of a user program register.
+//      Fetch or write the contents of a user program register.
 //----------------------------------------------------------------------
 
 int Machine::ReadRegister(int num) {
