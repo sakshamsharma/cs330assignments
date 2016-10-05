@@ -52,12 +52,15 @@
 
 #include "utility.h"
 #include "system.h"
+#include <fstream>
 
 // External functions used by this file
 
 extern void ThreadTest(void), Copy(char *unixFile, char *nachosFile);
 extern void Print(char *file), PerformanceTest(void);
-extern void StartUserProcess(char *file), ConsoleTest(char *in, char *out);
+extern void StartUserProcess(char *file),
+    ConsoleTest(char *in, char *out),
+    StartBatchOfProcesses(char files[][300], int *priorities, int batchSize);
 extern void MailTest(int networkID);
 
 //----------------------------------------------------------------------
@@ -89,6 +92,44 @@ int main(int argc, char **argv) {
     argCount = 1;
     if (!strcmp(*argv, "-z")) // print copyright
       printf(copyright);
+    if (!strcmp(*argv, "-F")) { // Run batch of processes
+        if (argc < 2) {
+            printf("Requires file name containing batch of processes\n");
+            return 1;
+        }
+        char files[100][300];
+        int priorities[100];
+        int cnt = 0;
+        std::ifstream input(argv[1]);
+        for (std::string line; getline(input, line); ) {
+            int pos = line.find(' ');
+            if (pos != std::string::npos) {
+                if (line.length() > pos &&
+                    line[pos+1] >= '0' && line[pos+1] <= '9') {
+
+                    // Valid input
+                    priorities[cnt] =
+                        (int)atoi(line.substr(pos+1).c_str());
+                    line[pos] = '\0';
+                    strcpy(files[cnt], line.c_str());
+                } else {
+                    printf("Bad string in file\n");
+                    return 1;
+                }
+            } else {
+                priorities[cnt] = 100;
+                strcpy(files[cnt], line.c_str());
+            }
+            cnt++;
+        }
+
+        printf("Processes to run:\n");
+        for (int i=0; i<cnt; i++) {
+            printf("%s: %d\n", files[i], priorities[i]);
+        }
+        DEBUG('t', "Starting running of processes\n");
+        StartBatchOfProcesses(files, priorities, cnt);
+    }
 #ifdef USER_PROGRAM
     if (!strcmp(*argv, "-x")) { // run a user program
       ASSERT(argc > 1);

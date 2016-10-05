@@ -42,6 +42,47 @@ void StartUserProcess(char *filename) {
                   // by doing the syscall "exit"
 }
 
+void StartBatchOfProcesses(char files[][300], int *priorities, int batchSize) {
+    NachOSThread *thread, *mainThread;
+    ProcessAddrSpace *space;
+    OpenFile *executable;
+    int i;
+    mainThread = currentThread;
+    for (i=0; i<batchSize; i++) {
+        executable = fileSystem->Open(files[i]);
+        if (executable == NULL) {
+            printf("Unable to open file %s\n", files[i]);
+            continue;
+        }
+        thread = new NachOSThread(files[i]);
+        space = new ProcessAddrSpace(executable);
+        thread->space = space;
+
+        delete executable; // close file
+
+        // TODO is this required?
+        currentThread = thread;
+
+        space->InitUserCPURegisters(); // set the initial register
+                                       // values
+        // TODO May be this is not needed
+        space->RestoreStateOnSwitch(); // load page table register
+        thread->Schedule();
+    }
+
+    // Exit main
+    currentThread = mainThread;
+    exitThreadArray[currentThread->GetPID()] = true;
+    for (i = 0; i < thread_index; i++) {
+      if (!exitThreadArray[i])
+        break;
+    }
+    currentThread->Exit(i == thread_index, 0);
+
+    // Let scheduler run the other threads
+    machine->Run();
+}
+
 // Data structures needed for the console test.  Threads making
 // I/O requests wait on a Semaphore to delay until the I/O completes.
 
