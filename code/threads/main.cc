@@ -24,6 +24,7 @@
 //    -s causes user programs to be executed in single-step mode
 //    -x runs a user program
 //    -c tests the console
+//    -F run a batch of processes
 //
 //  FILESYS
 //    -f causes the physical disk to be formatted
@@ -92,6 +93,7 @@ int main(int argc, char **argv) {
     argCount = 1;
     if (!strcmp(*argv, "-z")) // print copyright
       printf(copyright);
+#ifdef USER_PROGRAM
     if (!strcmp(*argv, "-F")) { // Run batch of processes
         if (argc < 2) {
             printf("Requires file name containing batch of processes\n");
@@ -129,8 +131,8 @@ int main(int argc, char **argv) {
         }
         DEBUG('t', "Starting running of processes\n");
         StartBatchOfProcesses(files, priorities, cnt);
+        argCount = 2;
     }
-#ifdef USER_PROGRAM
     if (!strcmp(*argv, "-x")) { // run a user program
       ASSERT(argc > 1);
       StartUserProcess(*(argv + 1));

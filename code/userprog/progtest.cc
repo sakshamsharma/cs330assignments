@@ -14,6 +14,8 @@
 #include "addrspace.h"
 #include "synch.h"
 
+extern void ForkStartFunction(int dummy);
+
 //----------------------------------------------------------------------
 // StartUserProcess
 // 	Run a user program.  Open the executable, load it into
@@ -48,6 +50,7 @@ void StartBatchOfProcesses(char files[][300], int *priorities, int batchSize) {
     OpenFile *executable;
     int i;
     mainThread = currentThread;
+
     for (i=0; i<batchSize; i++) {
         executable = fileSystem->Open(files[i]);
         if (executable == NULL) {
@@ -61,12 +64,19 @@ void StartBatchOfProcesses(char files[][300], int *priorities, int batchSize) {
         delete executable; // close file
 
         // TODO is this required?
-        currentThread = thread;
+        // currentThread = thread;
 
         space->InitUserCPURegisters(); // set the initial register
                                        // values
         // TODO May be this is not needed
-        space->RestoreStateOnSwitch(); // load page table register
+        // space->RestoreStateOnSwitch(); // load page table register
+
+        // save initialized registers for the thread
+        thread->SaveUserState();
+
+        // Allocate Kernel Stack
+        thread->AllocateThreadStack(ForkStartFunction, 0);
+
         thread->Schedule();
     }
 
