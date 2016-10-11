@@ -25,6 +25,26 @@
                                    // execution stack, for detecting
                                    // stack overflows
 
+// Functions for the wrapper class which stores the
+// statistics for the thread
+int ThreadStats::getWaitTimeAndStart(int curTicks) {
+    int waitTime = curTicks - endTicks;
+    startTicks = curTicks;
+    return waitTime;
+}
+
+int ThreadStats::getRunTimeAndStop(int curTicks) {
+    int runTime = curTicks - startTicks;
+    endTicks = curTicks;
+    return runTime;
+}
+
+void ThreadStats::putIntoReady(int curTicks) {
+    // So that next time it resumes,
+    // the endTicks reflects the time it waited
+    endTicks = curTicks;
+}
+
 //----------------------------------------------------------------------
 // NachOSThread::NachOSThread
 //  Initialize a thread control block, so that we can then call
@@ -44,6 +64,8 @@ NachOSThread::NachOSThread(char *threadName) {
     space = NULL;
     stateRestored = true;
 #endif
+
+    stats = new ThreadStats();
 
     threadArray[thread_index] = this;
     pid = thread_index;

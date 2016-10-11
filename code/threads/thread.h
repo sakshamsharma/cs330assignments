@@ -64,6 +64,32 @@ enum ThreadStatus { JUST_CREATED, RUNNING, READY, BLOCKED };
 // external function, dummy routine whose sole job is to call NachOSThread::Print
 extern void ThreadPrint(int arg);
 
+// Handles the statistics for the thread
+// Providing a clean interface for the inforamtion
+// required for logging
+class ThreadStats {
+private:
+    int startTicks;  // Start of current burst
+    int endTicks;    // End of current burst
+public:
+    int overallStartTime; // When it began
+    int overallEndTime;   // Finished completely
+
+    // Returns waiting time in ready queue
+    // Also, sets startTicks assuming the
+    // thread is now scheduled
+    int getWaitTimeAndStart(int curTicks);
+
+    // Returns CPU burst time
+    // Also updates endTicks
+    int getRunTimeAndStop(int curTicks);
+
+    // Sets the end time to reflect time
+    // when thread goes into ready queue
+    // Lets us track it's waiting time
+    void putIntoReady(int curTicks);
+};
+
 // The following class defines a "thread control block" -- which
 // represents a single thread of execution.
 //
@@ -134,6 +160,8 @@ public:
 
     void IncInstructionCount();
     unsigned GetInstructionCount();
+
+    ThreadStats *stats;
 
 private:
     // some of the private data for this class is listed above
