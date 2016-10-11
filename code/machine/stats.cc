@@ -21,6 +21,17 @@ Statistics::Statistics() {
     numDiskReads = numDiskWrites = 0;
     numConsoleCharsRead = numConsoleCharsWritten = 0;
     numPageFaults = numPacketsSent = numPacketsRecvd = 0;
+
+    averageBurst = 0;
+    minBurst = 0;
+    maxBurst = 0;
+    totalNonZeroBursts = 0;
+
+    averageWait = 0;
+    minWait = 0;
+    maxWait = 0;
+    varianceWait = 0;
+    totalWaits = 0;
 }
 
 //----------------------------------------------------------------------
@@ -38,4 +49,19 @@ void Statistics::Print() {
     printf("Paging: faults %d\n", numPageFaults);
     printf("Network I/O: packets received %d, sent %d\n", numPacketsRecvd,
            numPacketsSent);
+
+    printf("\n\n");
+
+    printf("Total CPU busy time: %d\n", systemTicks+userTicks);
+    printf("Total execution time: %d\n", totalTicks);
+    printf("CPU utilization: %.2f%%\n",
+           ((systemTicks+userTicks)*100.0)/totalTicks);
+    printf("Maximum CPU burst length: %d\n", maxBurst);
+    printf("Minimum CPU burst length: %d\n", minBurst);
+    printf("Average CPU burst length: %d\n", averageBurst);
+    printf("Number of non-zero CPU bursts: %d\n", totalNonZeroBursts);
+    printf("Maximum waiting time: %d\n", maxWait);
+    printf("Minimum waiting time: %d\n", minWait);
+    printf("Average waiting time: %d\n", averageWait);
+    printf("Variance in waiting time: %d\n", varianceWait);
 }

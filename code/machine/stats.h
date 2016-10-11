@@ -28,6 +28,17 @@ public:
     // (this is also equal to # of
     // user instructions executed)
 
+    int averageBurst;       // Average of CPU bursts till now
+    int minBurst;           // The shortest non zero burst
+    int maxBurst;           // The longest non zero burst
+    int totalNonZeroBursts; // Only count the non-zero bursts here
+
+    int averageWait;        // Total waiting time in ready queue
+    int minWait;            // Minimum seen waiting time
+    int maxWait;            // Maximum seen waiting time in queue
+    int varianceWait;       // Variance wait
+    int totalWaits;         // Helpful for calculating average
+
     int numDiskReads;       // number of disk read requests
     int numDiskWrites;      // number of disk write requests
     int numConsoleCharsRead;    // number of characters read from the keyboard
