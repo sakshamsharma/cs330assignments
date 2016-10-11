@@ -17,6 +17,23 @@
 // the data structures and operations needed to keep track of which 
 // thread is running, and which threads are ready but not running.
 
+//----------------------------------------------------------------------
+// SchedulingAlgo
+// Enumeration of the possible scheduling algorithms
+//----------------------------------------------------------------------
+enum SchedulingAlgo {
+    NonPDefault = 1,
+    NonPShortestNext = 2,
+    RoundRobin1 = 3,
+    RoundRobin2 = 4,
+    RoundRobin3 = 5,
+    RoundRobinMaxCPU = 6,
+    Unix1 = 7,
+    Unix2 = 8,
+    Unix3 = 9,
+    UnixMaxCPU = 10
+};
+
 class NachOSscheduler {
   public:
     NachOSscheduler();			// Initialize list of ready threads 

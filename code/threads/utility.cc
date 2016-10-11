@@ -9,6 +9,9 @@
 #include "copyright.h"
 #include "utility.h"
 
+#include "errno.h"
+#include "stdlib.h"
+
 // this seems to be dependent on how the compiler is configured.
 // if you have problems with va_start, try both of these alternatives
 #ifdef HOST_SNAKE
@@ -63,4 +66,15 @@ void DEBUG(char flag, char *format, ...) {
     va_end(ap);
     fflush(stdout);
   }
+}
+
+// Safely read integer into the integer at &value
+int readInteger(const char *line, int &value) {
+    errno = 0;
+    char **end = new char*;
+    value = strtol(line, end, 10);
+    if (errno != 0 || *end == line) {
+        return 1;
+    }
+    return 0;
 }

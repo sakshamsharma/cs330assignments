@@ -53,6 +53,7 @@
 
 #include "utility.h"
 #include "system.h"
+#include "scheduler.h"
 #include <fstream>
 
 // External functions used by this file
@@ -103,15 +104,33 @@ int main(int argc, char **argv) {
         int priorities[100];
         int cnt = 0;
         std::ifstream input(argv[1]);
+        std::string firstLine;
+
+        // First read the scheduling algo from the first line of the file
+        getline(input, firstLine);
+
+        int val, result = readInteger(firstLine.c_str(), val);
+        if (result != 0 || val < 1 || val > 10) {
+            printf("Bad scheduling algorithm number: %s\n", firstLine.c_str());
+            return 1;
+        }
+        SchedulingAlgo algo = static_cast<SchedulingAlgo>(val);
+
+        // Now parse the rest of the file for program names
         for (std::string line; getline(input, line); ) {
-            int pos = line.find(' ');
+            unsigned int pos = line.find(' ');
             if (pos != std::string::npos) {
                 if (line.length() > pos &&
                     line[pos+1] >= '0' && line[pos+1] <= '9') {
 
-                    // Valid input
-                    priorities[cnt] =
-                        (int)atoi(line.substr(pos+1).c_str());
+                    // The input was valid. Parse for priority
+                    result = readInteger(line.substr(pos+1).c_str(),
+                                         priorities[cnt]);
+                    if (result != 0) {
+                        printf("Bad priority value in %s\n", line.c_str());
+                        return 1;
+                    }
+
                     line[pos] = '\0';
                     strcpy(files[cnt], line.c_str());
                 } else {

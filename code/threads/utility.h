@@ -24,6 +24,7 @@
 #define UTILITY_H
 
 #include "copyright.h"
+#include <stdlib.h>
 
 // Miscellaneous useful routines
 
@@ -89,5 +90,7 @@ extern void DEBUG (char flag, char* format, ...);  	// Print debug message
         Abort();                                                              \
     }
 
+// Handles errors
+int readInteger(const char *line, int &value);
 
 #endif //UTILITY_H
