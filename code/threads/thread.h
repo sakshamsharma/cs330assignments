@@ -75,6 +75,8 @@ public:
     int overallStartTime; // When it began
     int overallEndTime;   // Finished completely
 
+    ThreadStats();
+
     // Returns waiting time in ready queue
     // Also, sets startTicks assuming the
     // thread is now scheduled

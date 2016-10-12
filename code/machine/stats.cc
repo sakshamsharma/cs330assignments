@@ -8,8 +8,14 @@
 // of liability and disclaimer of warranty provisions.
 
 #include "copyright.h"
+#include <math.h>
+#include <limits.h>
 #include "utility.h"
 #include "stats.h"
+
+// For some reason, the ones imported from utility aren't visible
+#define min(a,b)  (((a) < (b)) ? (a) : (b))
+#define max(a,b)  (((a) > (b)) ? (a) : (b))
 
 //----------------------------------------------------------------------
 // Statistics::Statistics
@@ -28,10 +34,28 @@ Statistics::Statistics() {
     totalNonZeroBursts = 0;
 
     averageWait = 0;
-    minWait = 0;
-    maxWait = 0;
-    varianceWait = 0;
     totalWaits = 0;
+}
+
+void Statistics::newBurst(int burstTime) {
+    if (burstTime > 0) {
+        int totalBurstTime = averageBurst * totalNonZeroBursts + burstTime;
+        totalNonZeroBursts++;
+        averageBurst = totalBurstTime / totalNonZeroBursts;
+
+        minBurst = min(burstTime, minBurst);
+        maxBurst = max(burstTime, maxBurst);
+    }
+}
+
+void Statistics::newWait(int waitTime) {
+    int totalWaitTime = averageWait * totalWaits + waitTime;
+    averageWait = totalWaitTime / (totalWaits+1);
+    totalWaits++;
+}
+
+void Statistics::newCompletion(int startToEnd) {
+    compTimes.push_back(startToEnd);
 }
 
 //----------------------------------------------------------------------
@@ -60,8 +84,27 @@ void Statistics::Print() {
     printf("Minimum CPU burst length: %d\n", minBurst);
     printf("Average CPU burst length: %d\n", averageBurst);
     printf("Number of non-zero CPU bursts: %d\n", totalNonZeroBursts);
-    printf("Maximum waiting time: %d\n", maxWait);
-    printf("Minimum waiting time: %d\n", minWait);
+
     printf("Average waiting time: %d\n", averageWait);
-    printf("Variance in waiting time: %d\n", varianceWait);
+
+    int totalSum = 0;
+    int minComp = INT_MAX, maxComp = 0;
+    for (std::vector<int>::iterator it = compTimes.begin();
+         it!=compTimes.end(); it++) {
+        totalSum += *it;
+        minComp = min(minComp, *it);
+        maxComp = max(maxComp, *it);
+    }
+    printf("Maximum completion time: %d\n", maxComp);
+    printf("Minimum completion time: %d\n", minComp);
+
+    float averageComp = totalSum/compTimes.size();
+    printf("Average completion time: %d\n", averageComp);
+
+    float secondMoment = 0.0;
+    for (std::vector<int>::iterator it = compTimes.begin();
+         it!=compTimes.end(); it++) {
+        secondMoment += pow(*it-averageComp, 2);
+    }
+    printf("Variance of completion times: %d\n", secondMoment/compTimes.size());
 }

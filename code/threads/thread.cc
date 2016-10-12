@@ -27,21 +27,30 @@
 
 // Functions for the wrapper class which stores the
 // statistics for the thread
+ThreadStats::ThreadStats() {
+    startTicks = 0;
+    endTicks = 0;
+    overallStartTime = 0;
+    overallEndTime = 0;
+}
+
+// Provides waiting time only
 int ThreadStats::getWaitTimeAndStart(int curTicks) {
     int waitTime = curTicks - endTicks;
     startTicks = curTicks;
     return waitTime;
 }
 
+// Provides time of the last CPU burst
 int ThreadStats::getRunTimeAndStop(int curTicks) {
     int runTime = curTicks - startTicks;
     endTicks = curTicks;
     return runTime;
 }
 
+// So that next time it resumes,
+// the endTicks reflects the time it waited
 void ThreadStats::putIntoReady(int curTicks) {
-    // So that next time it resumes,
-    // the endTicks reflects the time it waited
     endTicks = curTicks;
 }
 

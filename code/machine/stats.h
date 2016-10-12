@@ -12,6 +12,7 @@
 #define STATS_H
 
 #include "copyright.h"
+#include <vector>
 
 // The following class defines the statistics that are to be kept
 // about Nachos behavior -- how much time (ticks) elapsed, how
@@ -34,10 +35,9 @@ public:
     int totalNonZeroBursts; // Only count the non-zero bursts here
 
     int averageWait;        // Total waiting time in ready queue
-    int minWait;            // Minimum seen waiting time
-    int maxWait;            // Maximum seen waiting time in queue
-    int varianceWait;       // Variance wait
     int totalWaits;         // Helpful for calculating average
+
+    std::vector<int>compTimes; // To calculate completion time stats
 
     int numDiskReads;       // number of disk read requests
     int numDiskWrites;      // number of disk write requests
@@ -48,6 +48,10 @@ public:
     int numPacketsRecvd;    // number of packets received over the network
 
     Statistics();       // initialize everything to zero
+
+    void newBurst(int burstLength);
+    void newWait(int waitTime);
+    void newCompletion(int startToEnd);
 
     void Print();       // print collected statistics
 };
