@@ -163,7 +163,7 @@ public:
     void IncInstructionCount();
     unsigned GetInstructionCount();
 
-    ThreadStats *stats;
+    ThreadStats *tstats;
 
 private:
     // some of the private data for this class is listed above

@@ -49,6 +49,10 @@ void NachOSscheduler::ThreadIsReadyToRun(NachOSThread *thread) {
           thread->getName(), thread->GetPID());
 
     thread->setStatus(READY);
+
+    int curTicks = stats->totalTicks;
+    thread->tstats->putIntoReady(curTicks);
+
     readyThreadList->Append((void *)thread);
 }
 
@@ -91,8 +95,17 @@ void NachOSscheduler::Schedule(NachOSThread *nextThread) {
     oldThread->CheckOverflow(); // check if the old thread
     // had an undetected stack overflow
 
+    // Utilize the stats from old thread
+    int curTicks = stats->totalTicks;
+    int runTime = oldThread->tstats->getRunTimeAndStop(curTicks);
+    stats->newBurst(runTime);
+
     currentThread = nextThread;        // switch to the next thread
     currentThread->setStatus(RUNNING); // nextThread is now running
+
+    // Prepare the stats for new thread
+    int waitTimeInQueue = nextThread->tstats->getWaitTimeAndStart(curTicks);
+    stats->newWait(waitTimeInQueue);
 
     DEBUG(
         't',

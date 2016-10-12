@@ -29,7 +29,7 @@ Statistics::Statistics() {
     numPageFaults = numPacketsSent = numPacketsRecvd = 0;
 
     averageBurst = 0;
-    minBurst = 0;
+    minBurst = INT_MAX;
     maxBurst = 0;
     totalNonZeroBursts = 0;
 
@@ -98,13 +98,13 @@ void Statistics::Print() {
     printf("Maximum completion time: %d\n", maxComp);
     printf("Minimum completion time: %d\n", minComp);
 
-    float averageComp = totalSum/compTimes.size();
-    printf("Average completion time: %d\n", averageComp);
+    float averageComp = (totalSum*1.0)/compTimes.size();
+    printf("Average completion time: %.2f\n", averageComp);
 
     float secondMoment = 0.0;
     for (std::vector<int>::iterator it = compTimes.begin();
          it!=compTimes.end(); it++) {
         secondMoment += pow(*it-averageComp, 2);
     }
-    printf("Variance of completion times: %d\n", secondMoment/compTimes.size());
+    printf("Variance of completion times: %.2f\n", secondMoment/compTimes.size());
 }

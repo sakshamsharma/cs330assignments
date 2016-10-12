@@ -74,7 +74,7 @@ NachOSThread::NachOSThread(char *threadName) {
     stateRestored = true;
 #endif
 
-    stats = new ThreadStats();
+    tstats = new ThreadStats();
 
     threadArray[thread_index] = this;
     pid = thread_index;
@@ -142,6 +142,7 @@ void NachOSThread::ThreadFork(VoidFunctionPtr func, int arg) {
     AllocateThreadStack(func, arg);
 
     IntStatus oldLevel = interrupt->SetLevel(IntOff);
+
     scheduler->ThreadIsReadyToRun(
         this); // ThreadIsReadyToRun assumes that interrupts
     // are disabled!
@@ -187,12 +188,13 @@ void NachOSThread::CheckOverflow() {
 //  between setting threadToBeDestroyed, and going to sleep.
 //----------------------------------------------------------------------
 
-//
 void NachOSThread::FinishThread() {
     (void)interrupt->SetLevel(IntOff);
     ASSERT(this == currentThread);
 
     DEBUG('t', "Finishing thread \"%s\" with pid %d\n", getName(), pid);
+
+    stats->newCompletion(stats->totalTicks - tstats->overallStartTime);
 
     threadToBeDestroyed = currentThread;
     PutThreadToSleep(); // invokes SWITCH
@@ -238,6 +240,7 @@ void NachOSThread::Exit(bool terminateSim, int exitcode) {
     ASSERT(this == currentThread);
 
     DEBUG('t', "Finishing thread \"%s\" with pid %d\n", getName(), pid);
+    stats->newCompletion(stats->totalTicks - tstats->overallStartTime);
 
     threadToBeDestroyed = currentThread;
 
@@ -390,6 +393,11 @@ void NachOSThread::AllocateThreadStack(VoidFunctionPtr func, int arg) {
     machineState[InitialPCState] = (int)func;
     machineState[InitialArgState] = arg;
     machineState[WhenDonePCState] = (int)ThreadFinish;
+
+    // Thread time info
+    int curTicks = stats->totalTicks;
+    tstats->overallStartTime = curTicks;
+    tstats->putIntoReady(curTicks);
 }
 
 #ifdef USER_PROGRAM
