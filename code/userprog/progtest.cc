@@ -45,11 +45,10 @@ void StartUserProcess(char *filename) {
 }
 
 void StartBatchOfProcesses(char files[][300], int *priorities, int batchSize) {
-    NachOSThread *thread, *mainThread;
+    NachOSThread *thread;
     ProcessAddrSpace *space;
     OpenFile *executable;
     int i;
-    mainThread = currentThread;
 
     for (i=0; i<batchSize; i++) {
         executable = fileSystem->Open(files[i]);
@@ -63,13 +62,8 @@ void StartBatchOfProcesses(char files[][300], int *priorities, int batchSize) {
 
         delete executable; // close file
 
-        // TODO is this required?
-        // currentThread = thread;
-
         space->InitUserCPURegisters(); // set the initial register
                                        // values
-        // TODO May be this is not needed
-        // space->RestoreStateOnSwitch(); // load page table register
 
         // save initialized registers for the thread
         thread->SaveUserState();
@@ -77,11 +71,10 @@ void StartBatchOfProcesses(char files[][300], int *priorities, int batchSize) {
         // Allocate Kernel Stack
         thread->AllocateThreadStack(ForkStartFunction, 0);
 
-        thread->Schedule();
+        scheduler->ThreadIsReadyToRun(thread);
     }
 
     // Exit main
-    currentThread = mainThread;
     exitThreadArray[currentThread->GetPID()] = true;
     for (i = 0; i < thread_index; i++) {
       if (!exitThreadArray[i])
