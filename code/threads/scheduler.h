@@ -22,7 +22,8 @@
 // Enumeration of the possible scheduling algorithms
 //----------------------------------------------------------------------
 enum SchedulingAlgo {
-    NonPDefault = 1,
+    Default = 0,
+    NonPFCFS = 1,
     NonPShortestNext = 2,
     RoundRobin1 = 3,
     RoundRobin2 = 4,
@@ -49,10 +50,15 @@ public:
 
     // Returns size of readyThreadList
     int GetListSize() { return readyThreadList->GetSize(); };
+#ifdef USER_PROGRAM
+    SchedulingAlgo schedAlgo;       // Scheduling Algorithm for the scheduler
+    void UpdatePriority(int burstLength);       // updates priorities of all
+                                                // threads for next scheduling
 
+#endif
 private:
     List *readyThreadList;          // queue of threads that are ready to run,
-    // but not running
+                                    // but not running
 };
 
 #endif // SCHEDULER_H

@@ -58,6 +58,8 @@ void StartBatchOfProcesses(char files[][300], int *priorities, int batchSize) {
         }
         thread = new NachOSThread(files[i]);
         space = new ProcessAddrSpace(executable);
+        if (scheduler->schedAlgo >= 7)
+            thread->priority = priorities[i] + 50;
         thread->space = space;
 
         delete executable; // close file

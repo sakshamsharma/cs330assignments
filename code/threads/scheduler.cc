@@ -27,7 +27,12 @@
 //  Initialize the list of ready but not running threads to empty.
 //----------------------------------------------------------------------
 
-NachOSscheduler::NachOSscheduler() { readyThreadList = new List; }
+NachOSscheduler::NachOSscheduler() {
+#ifdef USER_PROGRAM
+    schedAlgo = Default;
+#endif
+    readyThreadList = new List;
+}
 
 //----------------------------------------------------------------------
 // NachOSscheduler::~NachOSscheduler
@@ -182,3 +187,42 @@ void NachOSscheduler::Print() {
     printf("Ready list contents:\n");
     readyThreadList->Mapcar((VoidFunctionPtr)ThreadPrint);
 }
+
+#ifdef USER_PROGRAM
+//----------------------------------------------------------------------
+// NachOSscheduler::UpdatePriority
+//  Updates priority value of threads as required by the
+//  scheduling Algorithm
+//
+//----------------------------------------------------------------------
+
+void NachOSscheduler::UpdatePriority(int burstLength) {
+    switch(scheduler->schedAlgo) {
+
+    // NP-SJF
+    case 2:
+        currentThread->priority = (currentThread->priority +
+                                    burstLength)/2;
+        break;
+
+    // P-UNIX
+    case 7:
+    case 8:
+    case 9:
+    case 10:
+        currentThread->priority = currentThread->priority + burstLength;
+        for(int i = 0; i < thread_index; ++ i)
+            if (!exitThreadArray[i]) {
+                threadArray[i]->priority = (threadArray[i]->priority - 50)/2
+                                            + 50;
+            }
+        break;
+
+    // NP-FCFS and P-RR
+    default:
+        currentThread->priority = stats->totalTicks;
+    }
+    return;
+}
+
+#endif

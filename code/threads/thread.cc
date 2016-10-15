@@ -54,6 +54,12 @@ void ThreadStats::putIntoReady(int curTicks) {
     endTicks = curTicks;
 }
 
+// Returns current CPU Burst Length
+int ThreadStats::getCurrentBurstLength(int curTicks) {
+    int length = curTicks - startTicks;
+    return length;
+}
+
 //----------------------------------------------------------------------
 // NachOSThread::NachOSThread
 //  Initialize a thread control block, so that we can then call
@@ -72,6 +78,12 @@ NachOSThread::NachOSThread(char *threadName) {
 #ifdef USER_PROGRAM
     space = NULL;
     stateRestored = true;
+    // If Scheduling Algo iis NP-SJF, then initial priority is 10, else
+    // priority initialized to current timestamp
+    if (scheduler->schedAlgo == 2)
+        priority = 10;
+    else
+        priority = stats->totalTicks;
 #endif
 
     tstats = new ThreadStats();
@@ -304,6 +316,12 @@ void NachOSThread::YieldCPU() {
     if (nextThread != NULL) {
         scheduler->ThreadIsReadyToRun(this);
         scheduler->Schedule(nextThread);
+    } else {
+        int curTicks = stats->totalTicks;
+        int runTime = tstats->getRunTimeAndStop(curTicks);
+        stats->newBurst(runTime);
+
+        (void)tstats->getWaitTimeAndStart(curTicks);
     }
     (void)interrupt->SetLevel(oldLevel);
 }

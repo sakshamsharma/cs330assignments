@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
             printf("Bad scheduling algorithm number: %s\n", firstLine.c_str());
             return 1;
         }
-        SchedulingAlgo algo = static_cast<SchedulingAlgo>(val);
+        scheduler->schedAlgo = static_cast<SchedulingAlgo>(val);
 
         // Now parse the rest of the file for program names
         for (std::string line; getline(input, line); ) {

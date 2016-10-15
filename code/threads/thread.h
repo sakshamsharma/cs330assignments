@@ -90,6 +90,10 @@ public:
     // when thread goes into ready queue
     // Lets us track it's waiting time
     void putIntoReady(int curTicks);
+
+    // Gets the length of current CPU Burst
+    // to check whether to preempt or not
+    int getCurrentBurstLength(int curTicks);
 };
 
 // The following class defines a "thread control block" -- which
@@ -107,8 +111,8 @@ class NachOSThread {
 private:
     // NOTE: DO NOT CHANGE the order of these first two members.
     // THEY MUST be in this position for SWITCH to work.
-    int* stackTop;           // the current stack pointer
-    int machineState[MachineStateSize];  // all registers except for stackTop
+    int* stackTop;                          // the current stack pointer
+    int machineState[MachineStateSize];     // all registers except for stackTop
 
 public:
     NachOSThread(char* debugName);      // initialize a Thread
@@ -194,11 +198,12 @@ private:
     bool stateRestored;
 
 public:
-    void SaveUserState();       // save user-level register state
-    void RestoreUserState();        // restore user-level register state
-    void ResetReturnValue ();                           // Used by SYScall_Fork to set the return value of child to zero
+    void SaveUserState();               // save user-level register state
+    void RestoreUserState();            // restore user-level register state
+    void ResetReturnValue ();           // Used by SYScall_Fork to set the return value of child to zero
 
     ProcessAddrSpace *space;            // User code this thread is running.
+    int priority;                       // Priority for Scheduling
 #endif
 };
 
