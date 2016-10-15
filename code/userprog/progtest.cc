@@ -74,6 +74,7 @@ void StartBatchOfProcesses(char files[][300], int *priorities, int batchSize) {
         thread->Schedule();
     }
 
+    exitThreadArray[currentThread->GetPID()] = true;
     // FinishThread doesn't log completion time, NachOSThread::Exit does
     currentThread->FinishThread();
 
