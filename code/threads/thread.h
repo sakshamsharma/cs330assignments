@@ -93,7 +93,7 @@ public:
 
     // Gets the length of current CPU Burst
     // to check whether to preempt or not
-    int getCurrentBurstLength(int curTicks);
+    int getCurrBurstLen();
 };
 
 // The following class defines a "thread control block" -- which

@@ -58,7 +58,11 @@ void NachOSscheduler::ThreadIsReadyToRun(NachOSThread *thread) {
     int curTicks = stats->totalTicks;
     thread->tstats->putIntoReady(curTicks);
 
+#ifdef USER_PROGRAM
+    readyThreadList->SortedInsert((void *)thread, thread->priority);
+#else
     readyThreadList->Append((void *)thread);
+#endif
 }
 
 //----------------------------------------------------------------------
@@ -90,20 +94,22 @@ NachOSThread *NachOSscheduler::FindNextThreadToRun() {
 void NachOSscheduler::Schedule(NachOSThread *nextThread) {
     NachOSThread *oldThread = currentThread;
 
+    // Utilize the stats from old thread
+    int curTicks = stats->totalTicks;
+    int runTime = oldThread->tstats->getRunTimeAndStop(curTicks);
+    stats->newBurst(runTime);
+
 #ifdef USER_PROGRAM                   // ignore until running user programs
     if (currentThread->space != NULL) { // if this thread is a user program,
         currentThread->SaveUserState();   // save the user's CPU registers
         currentThread->space->SaveStateOnSwitch();
     }
+
+    UpdatePriority(runTime);
 #endif
 
     oldThread->CheckOverflow(); // check if the old thread
     // had an undetected stack overflow
-
-    // Utilize the stats from old thread
-    int curTicks = stats->totalTicks;
-    int runTime = oldThread->tstats->getRunTimeAndStop(curTicks);
-    stats->newBurst(runTime);
 
     currentThread = nextThread;        // switch to the next thread
     currentThread->setStatus(RUNNING); // nextThread is now running
@@ -211,7 +217,7 @@ void NachOSscheduler::UpdatePriority(int burstLength) {
     case 9:
     case 10:
         currentThread->priority = currentThread->priority + burstLength;
-        for(int i = 0; i < thread_index; ++ i)
+        for(unsigned int i = 0; i < thread_index; ++ i)
             if (!exitThreadArray[i]) {
                 threadArray[i]->priority = (threadArray[i]->priority - 50)/2
                                             + 50;
@@ -224,5 +230,4 @@ void NachOSscheduler::UpdatePriority(int burstLength) {
     }
     return;
 }
-
 #endif

@@ -75,7 +75,13 @@ static void TimerInterruptHandler(int dummy) {
       delete ptr;
     }
     // printf("[%d] Timer interrupt.\n", stats->totalTicks);
+#ifdef USER_PROGRAM
+    if ((2 < static_cast<int>(scheduler->schedAlgo)) &&
+        (currentThread->tstats->getCurrBurstLen() < 100))
+        interrupt->YieldOnReturn();
+#else
     interrupt->YieldOnReturn();
+#endif
   }
 }
 

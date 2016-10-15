@@ -55,7 +55,8 @@ void ThreadStats::putIntoReady(int curTicks) {
 }
 
 // Returns current CPU Burst Length
-int ThreadStats::getCurrentBurstLength(int curTicks) {
+int ThreadStats::getCurrBurstLen() {
+    int curTicks = stats->totalTicks;
     int length = curTicks - startTicks;
     return length;
 }
