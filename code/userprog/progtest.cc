@@ -71,16 +71,11 @@ void StartBatchOfProcesses(char files[][300], int *priorities, int batchSize) {
         // Allocate Kernel Stack
         thread->AllocateThreadStack(ForkStartFunction, 0);
 
-        scheduler->ThreadIsReadyToRun(thread);
+        thread->Schedule();
     }
 
-    // Exit main
-    exitThreadArray[currentThread->GetPID()] = true;
-    for (i = 0; i < thread_index; i++) {
-      if (!exitThreadArray[i])
-        break;
-    }
-    currentThread->Exit(i == thread_index, 0);
+    // FinishThread doesn't log completion time, NachOSThread::Exit does
+    currentThread->FinishThread();
 
     // Let scheduler run the other threads
     machine->Run();

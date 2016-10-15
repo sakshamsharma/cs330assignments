@@ -47,6 +47,9 @@ public:
 
     void Tail();                        // Used by fork()
 
+    // Returns size of readyThreadList
+    int GetListSize() { return readyThreadList->GetSize(); };
+
 private:
     List *readyThreadList;          // queue of threads that are ready to run,
     // but not running

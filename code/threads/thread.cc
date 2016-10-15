@@ -29,8 +29,8 @@
 // statistics for the thread
 ThreadStats::ThreadStats() {
     startTicks = 0;
-    endTicks = 0;
-    overallStartTime = 0;
+    endTicks = stats->totalTicks;
+    overallStartTime = stats->totalTicks;
     overallEndTime = 0;
 }
 
@@ -190,11 +190,12 @@ void NachOSThread::CheckOverflow() {
 
 void NachOSThread::FinishThread() {
     (void)interrupt->SetLevel(IntOff);
+
+    // FinishThread called only for main thread of batch execution
+    // no other process should call this routine
     ASSERT(this == currentThread);
 
     DEBUG('t', "Finishing thread \"%s\" with pid %d\n", getName(), pid);
-
-    stats->newCompletion(stats->totalTicks - tstats->overallStartTime);
 
     threadToBeDestroyed = currentThread;
     PutThreadToSleep(); // invokes SWITCH
@@ -258,6 +259,11 @@ void NachOSThread::Exit(bool terminateSim, int exitcode) {
 
     while ((nextThread = scheduler->FindNextThreadToRun()) == NULL) {
         if (terminateSim) {
+           // Utilize the stats from old thread
+            int curTicks = stats->totalTicks;
+            int runTime = currentThread->tstats->getRunTimeAndStop(curTicks);
+            stats->newBurst(runTime);
+
             DEBUG('i', "Machine idle.  No interrupts to do.\n");
             printf("\nNo threads ready or runnable, and no pending interrupts.\n");
             printf("Assuming all programs completed.\n");
@@ -393,11 +399,6 @@ void NachOSThread::AllocateThreadStack(VoidFunctionPtr func, int arg) {
     machineState[InitialPCState] = (int)func;
     machineState[InitialArgState] = arg;
     machineState[WhenDonePCState] = (int)ThreadFinish;
-
-    // Thread time info
-    int curTicks = stats->totalTicks;
-    tstats->overallStartTime = curTicks;
-    tstats->putIntoReady(curTicks);
 }
 
 #ifdef USER_PROGRAM

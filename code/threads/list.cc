@@ -216,3 +216,19 @@ void *List::SortedRemove(int *keyPtr) {
   delete element;
   return thing;
 }
+
+//----------------------------------------------------------------------
+// List::getSize
+//      Returns the size of ready thread list
+//
+//----------------------------------------------------------------------
+
+int List::GetSize(void) {
+    ListElement *element = first;
+    int count = 0;
+    while(element != NULL) {
+        ++ count;
+        element = element->next;
+    }
+    return count;
+}
