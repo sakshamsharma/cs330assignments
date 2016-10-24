@@ -85,6 +85,7 @@ NachOSThread::NachOSThread(char *threadName) {
         priority = 10;
     else
         priority = stats->totalTicks;
+    cpuCount = 0;
 #endif
 
     tstats = new ThreadStats();

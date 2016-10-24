@@ -216,11 +216,10 @@ void NachOSscheduler::UpdatePriority(int burstLength) {
     case 8:
     case 9:
     case 10:
-        currentThread->priority = currentThread->priority + burstLength;
+        currentThread->cpuCount = currentThread->cpuCount + burstLength;
         for(unsigned int i = 0; i < thread_index; ++ i)
             if (!exitThreadArray[i]) {
-                threadArray[i]->priority = (threadArray[i]->priority - 50)/2
-                                            + 50;
+                threadArray[i]->cpuCount = (threadArray[i]->cpuCount)/2;
             }
         break;
 

@@ -203,7 +203,7 @@ public:
     void ResetReturnValue ();           // Used by SYScall_Fork to set the return value of child to zero
 
     ProcessAddrSpace *space;            // User code this thread is running.
-    int priority;                       // Priority for Scheduling
+    int priority, cpuCount;             // Priority for Scheduling
 #endif
 };
 
