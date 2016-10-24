@@ -32,6 +32,7 @@ ThreadStats::ThreadStats() {
     endTicks = stats->totalTicks;
     overallStartTime = stats->totalTicks;
     overallEndTime = 0;
+    lastBurst = 0;
 }
 
 // Provides waiting time only
@@ -44,6 +45,7 @@ int ThreadStats::getWaitTimeAndStart(int curTicks) {
 // Provides time of the last CPU burst
 int ThreadStats::getRunTimeAndStop(int curTicks) {
     int runTime = curTicks - startTicks;
+    lastBurst = runTime;
     endTicks = curTicks;
     return runTime;
 }
@@ -56,9 +58,7 @@ void ThreadStats::putIntoReady(int curTicks) {
 
 // Returns current CPU Burst Length
 int ThreadStats::getCurrBurstLen() {
-    int curTicks = stats->totalTicks;
-    int length = curTicks - startTicks;
-    return length;
+    return stats->totalTicks - startTicks;
 }
 
 //----------------------------------------------------------------------
@@ -315,10 +315,14 @@ void NachOSThread::YieldCPU() {
     DEBUG('t', "Yielding thread \"%s\" with pid %d\n", getName(), pid);
 
     nextThread = scheduler->FindNextThreadToRun();
+
     if (nextThread != NULL) {
+        // ThreadIsReadyToRun does not update the stats
+        // Stats are updated in Schedule
         scheduler->ThreadIsReadyToRun(this);
         scheduler->Schedule(nextThread);
     } else {
+        // In case where there will be no other job
         int curTicks = stats->totalTicks;
         int runTime = tstats->getRunTimeAndStop(curTicks);
         stats->newBurst(runTime);

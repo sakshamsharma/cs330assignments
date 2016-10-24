@@ -59,7 +59,13 @@ void NachOSscheduler::ThreadIsReadyToRun(NachOSThread *thread) {
     thread->tstats->putIntoReady(curTicks);
 
 #ifdef USER_PROGRAM
-    readyThreadList->SortedInsert((void *)thread, thread->priority);
+    // In case of UNIX scheduling, this will be handled
+    // completely at the time of context switch
+    if (scheduler->schedAlgo <= 6) {
+        UpdatePriority(thread);
+    }
+    readyThreadList->SortedInsert((void *)thread,
+                                  thread->priority + thread->cpuCount);
 #else
     readyThreadList->Append((void *)thread);
 #endif
@@ -105,7 +111,12 @@ void NachOSscheduler::Schedule(NachOSThread *nextThread) {
         currentThread->space->SaveStateOnSwitch();
     }
 
-    UpdatePriority(runTime);
+    // Only in case of UNIX scheduler
+    // Since in this case, we did not call UpdatePriority
+    // inside ThreadIsReadyToRun
+    if (scheduler->schedAlgo >= 7) {
+        UpdatePriority(currentThread);
+    }
 #endif
 
     oldThread->CheckOverflow(); // check if the old thread
@@ -202,30 +213,42 @@ void NachOSscheduler::Print() {
 //
 //----------------------------------------------------------------------
 
-void NachOSscheduler::UpdatePriority(int burstLength) {
+void NachOSscheduler::UpdatePriority(NachOSThread *thread) {
+    int burstLength = thread->tstats->lastBurst;
+    List *tmpList = new List;
+    NachOSThread *retThread;
+
     switch(scheduler->schedAlgo) {
+        // NP-SJF
+        case 2:
+            // No per-process priority supplied via file
+            // Using predicted cpu burst as priority value
+            thread->priority = (thread->priority +
+                                burstLength)/2;
+            break;
 
-    // NP-SJF
-    case 2:
-        currentThread->priority = (currentThread->priority +
-                                    burstLength)/2;
-        break;
-
-    // P-UNIX
-    case 7:
-    case 8:
-    case 9:
-    case 10:
-        currentThread->cpuCount = currentThread->cpuCount + burstLength;
-        for(unsigned int i = 0; i < thread_index; ++ i)
-            if (!exitThreadArray[i]) {
-                threadArray[i]->cpuCount = (threadArray[i]->cpuCount)/2;
+            // P-UNIX
+        case 7:
+        case 8:
+        case 9:
+        case 10:
+            thread->cpuCount = thread->cpuCount + burstLength;
+            for(unsigned int i = 0; i < thread_index; ++ i) {
+                if (!exitThreadArray[i]) {
+                    threadArray[i]->cpuCount = (threadArray[i]->cpuCount)/2;
+                }
             }
-        break;
+            while (!readyThreadList->IsEmpty()) {
+                retThread = (NachOSThread*)readyThreadList->Remove();
+                tmpList->SortedInsert((void *)retThread,
+                                      retThread->priority + retThread->cpuCount);
+            }
+            readyThreadList = tmpList;
+            break;
 
-    // NP-FCFS and P-RR
-    default:
-        currentThread->priority = stats->totalTicks;
+            // NP-FCFS and P-RR
+        default:
+            thread->priority = stats->totalTicks;
     }
     return;
 }

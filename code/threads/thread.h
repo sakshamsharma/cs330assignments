@@ -74,6 +74,7 @@ private:
 public:
     int overallStartTime; // When it began
     int overallEndTime;   // Finished completely
+    int lastBurst;        // Useful for priority calcs
 
     ThreadStats();
 

@@ -52,8 +52,8 @@ public:
     int GetListSize() { return readyThreadList->GetSize(); };
 #ifdef USER_PROGRAM
     SchedulingAlgo schedAlgo;       // Scheduling Algorithm for the scheduler
-    void UpdatePriority(int burstLength);       // updates priorities of all
-                                                // threads for next scheduling
+    void UpdatePriority(NachOSThread *);       // updates priorities of all
+                                               // threads for next scheduling
 
 #endif
 private:
