@@ -69,9 +69,9 @@ extern void ThreadPrint(int arg);
 // required for logging
 class ThreadStats {
 private:
-    int startTicks;  // Start of current burst
     int endTicks;    // End of current burst
 public:
+    int startTicks;  // Start of current burst
     int overallStartTime; // When it began
     int overallEndTime;   // Finished completely
     int lastBurst;        // Useful for priority calcs

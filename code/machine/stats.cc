@@ -45,6 +45,10 @@ void Statistics::newBurst(int burstTime) {
 
         minBurst = min(burstTime, minBurst);
         maxBurst = max(burstTime, maxBurst);
+        if (burstTime > 200) {
+            printf("Failed on Burst Time %d\n", burstTime);
+            ASSERT(false);
+        }
     }
 }
 

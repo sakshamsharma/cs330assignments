@@ -39,6 +39,9 @@ ThreadStats::ThreadStats() {
 int ThreadStats::getWaitTimeAndStart(int curTicks) {
     int waitTime = curTicks - endTicks;
     startTicks = curTicks;
+    if (currentThread->GetPID() ) {
+        printf("Entering into preocessor @ %d\n", curTicks);
+    }
     return waitTime;
 }
 
@@ -314,17 +317,18 @@ void NachOSThread::YieldCPU() {
 
     DEBUG('t', "Yielding thread \"%s\" with pid %d\n", getName(), pid);
 
+    scheduler->ThreadIsReadyToRun(this);
     nextThread = scheduler->FindNextThreadToRun();
 
-    if (nextThread != NULL) {
+    if (nextThread != currentThread) {
         // ThreadIsReadyToRun does not update the stats
         // Stats are updated in Schedule
-        scheduler->ThreadIsReadyToRun(this);
         scheduler->Schedule(nextThread);
     } else {
         // In case where there will be no other job
         int curTicks = stats->totalTicks;
         int runTime = tstats->getRunTimeAndStop(curTicks);
+        printf("Runtime for Current Thread %d from start time: %d and current time %d\n", runTime, currentThread->tstats->startTicks, curTicks);
         stats->newBurst(runTime);
 
         (void)tstats->getWaitTimeAndStart(curTicks);
