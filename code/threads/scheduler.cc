@@ -61,9 +61,7 @@ void NachOSscheduler::ThreadIsReadyToRun(NachOSThread *thread) {
 #ifdef USER_PROGRAM
     // In case of UNIX scheduling, this will be handled
     // completely at the time of context switch
-    if (scheduler->schedAlgo <= 6) {
-        UpdatePriority(thread);
-    }
+    UpdatePriority(thread); 
     readyThreadList->SortedInsert((void *)thread,
                                   thread->priority + thread->cpuCount);
 #else
@@ -111,12 +109,7 @@ void NachOSscheduler::Schedule(NachOSThread *nextThread) {
         currentThread->space->SaveStateOnSwitch();
     }
 
-    // Only in case of UNIX scheduler
-    // Since in this case, we did not call UpdatePriority
-    // inside ThreadIsReadyToRun
-    if (scheduler->schedAlgo >= 7) {
-        UpdatePriority(currentThread);
-    }
+
 #endif
 
     oldThread->CheckOverflow(); // check if the old thread
