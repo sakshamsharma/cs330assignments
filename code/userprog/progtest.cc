@@ -49,7 +49,8 @@ void StartBatchOfProcesses(char files[][300], int *priorities, int batchSize) {
     ProcessAddrSpace *space;
     OpenFile *executable;
     int i;
-
+    IntStatus oldLevel = interrupt->SetLevel(IntOff); //needed because 
+    // NachosThread::Schedule updates the timer if the interrupt level is on
     for (i=0; i<batchSize; i++) {
         executable = fileSystem->Open(files[i]);
         if (executable == NULL) {
@@ -75,6 +76,7 @@ void StartBatchOfProcesses(char files[][300], int *priorities, int batchSize) {
 
         thread->Schedule();
     }
+    interrupt->SetLevel(oldLevel);  // turning on the interrupt
 
     exitThreadArray[currentThread->GetPID()] = true;
     // FinishThread doesn't log completion time, NachOSThread::Exit does
