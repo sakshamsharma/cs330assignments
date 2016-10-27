@@ -71,12 +71,13 @@ class ThreadStats {
 private:
     int endTicks;    // End of current burst
 public:
+    int pid;
     int startTicks;  // Start of current burst
     int overallStartTime; // When it began
     int overallEndTime;   // Finished completely
     int lastBurst;        // Useful for priority calcs
 
-    ThreadStats();
+    ThreadStats(int);
 
     // Returns waiting time in ready queue
     // Also, sets startTicks assuming the

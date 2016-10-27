@@ -27,7 +27,8 @@
 
 // Functions for the wrapper class which stores the
 // statistics for the thread
-ThreadStats::ThreadStats() {
+ThreadStats::ThreadStats(int _pid) {
+    pid = _pid;
     startTicks = 0;
     endTicks = stats->totalTicks;
     overallStartTime = stats->totalTicks;
@@ -40,7 +41,7 @@ int ThreadStats::getWaitTimeAndStart(int curTicks) {
     int waitTime = curTicks - endTicks;
     startTicks = curTicks;
     if (currentThread->GetPID() ) {
-        printf("[%d] Entering into processor @ %d\n", currentThread->GetPID(), curTicks);
+        printf("[%d] Entering into processor @ %d\n", pid, curTicks);
     }
     return waitTime;
 }
@@ -51,7 +52,7 @@ int ThreadStats::getRunTimeAndStop(int curTicks) {
     lastBurst = runTime;
     endTicks = curTicks;
     if (currentThread->GetPID() ) {
-        printf("[%d] Runtime @ %d\n", currentThread->GetPID(), runTime);
+        printf("[%d] Runtime @ %d ended at %d\n", pid, runTime, curTicks);
     }
     return runTime;
 }
@@ -100,8 +101,6 @@ NachOSThread::NachOSThread(char *threadName) {
     cpuCount = 0;
 #endif
 
-    tstats = new ThreadStats();
-
     threadArray[thread_index] = this;
     pid = thread_index;
     thread_index++;
@@ -111,6 +110,8 @@ NachOSThread::NachOSThread(char *threadName) {
         currentThread->RegisterNewChild(pid);
     } else
         ppid = -1;
+
+    tstats = new ThreadStats(pid);
 
     childcount = 0;
     waitchild_id = -1;
