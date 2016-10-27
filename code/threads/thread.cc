@@ -37,30 +37,32 @@ ThreadStats::ThreadStats(int _pid) {
 }
 
 // Provides waiting time only
-int ThreadStats::getWaitTimeAndStart(int curTicks) {
+int ThreadStats::getWaitTimeAndStart() {
+    int curTicks = stats->totalTicks;
     int waitTime = curTicks - endTicks;
     startTicks = curTicks;
     if (currentThread->GetPID() ) {
-        printf("[%d] Entering into processor @ %d\n", pid, curTicks);
+        printf("[%d][Time: %d] Running after wait, waiting since %d\n", pid, curTicks, endTicks);
     }
     return waitTime;
 }
 
 // Provides time of the last CPU burst
-int ThreadStats::getRunTimeAndStop(int curTicks) {
+int ThreadStats::getRunTimeAndStop() {
+    int curTicks = stats->totalTicks;
     int runTime = curTicks - startTicks;
     lastBurst = runTime;
     endTicks = curTicks;
     if (currentThread->GetPID() ) {
-        printf("[%d] Runtime @ %d ended at %d\n", pid, runTime, curTicks);
+        printf("[%d][Time: %d] Runtime @ %d\n", pid, curTicks, runTime);
     }
     return runTime;
 }
 
 // So that next time it resumes,
 // the endTicks reflects the time it waited
-void ThreadStats::putIntoReady(int curTicks) {
-    endTicks = curTicks;
+void ThreadStats::putIntoReady() {
+    endTicks = stats->totalTicks;
 }
 
 // Returns current CPU Burst Length
@@ -268,7 +270,13 @@ void NachOSThread::Exit(bool terminateSim, int exitcode) {
     ASSERT(this == currentThread);
 
     DEBUG('t', "Finishing thread \"%s\" with pid %d\n", getName(), pid);
+
+    // Utilize the stats from this thread before it is removed
+    int runTime = currentThread->tstats->getRunTimeAndStop();
+    printf("[%d] Exiting runtime: %d\n", currentThread->GetPID(), runTime);
+    stats->newBurst(runTime);
     stats->newCompletion(stats->totalTicks - tstats->overallStartTime);
+    UpdatePriority();           // Redundant
 
     threadToBeDestroyed = currentThread;
 
@@ -286,12 +294,6 @@ void NachOSThread::Exit(bool terminateSim, int exitcode) {
 
     while ((nextThread = scheduler->FindNextThreadToRun()) == NULL) {
         if (terminateSim) {
-           // Utilize the stats from old thread
-            int curTicks = stats->totalTicks;
-            int runTime = currentThread->tstats->getRunTimeAndStop(curTicks);
-            printf("[%d] Switching out runtime: %d\n", currentThread->GetPID(), runTime);
-            stats->newBurst(runTime);
-
             DEBUG('i', "Machine idle.  No interrupts to do.\n");
             printf("\nNo threads ready or runnable, and no pending interrupts.\n");
             printf("Assuming all programs completed.\n");
@@ -331,19 +333,24 @@ void NachOSThread::YieldCPU() {
     scheduler->ThreadIsReadyToRun(this);
     nextThread = scheduler->FindNextThreadToRun();
 
-    if (nextThread != currentThread) {
+    // Add it's burst to stats
+    int runTime = tstats->getRunTimeAndStop();
+    printf("[%d] Switching out runtime: %d\n", GetPID(), runTime);
+    stats->newBurst(runTime);
+    UpdatePriority();
+
+    if (nextThread != currentThread && nextThread != NULL) {
         // ThreadIsReadyToRun does not update the stats
         // Stats are updated in Schedule
         scheduler->Schedule(nextThread);
     } else {
         // In case where there will be no other job
-        int curTicks = stats->totalTicks;
-        int runTime = tstats->getRunTimeAndStop(curTicks);
-        printf("[%d] Switching out runtime: %d\n", currentThread->GetPID(), runTime);
-        stats->newBurst(runTime);
-
-        (void)tstats->getWaitTimeAndStart(curTicks);
+        // Since wait time is 0, ignore the wait time
+        // But we need to update the start time for
+        // later CPU burst calculations
+        (void)tstats->getWaitTimeAndStart();
     }
+
     (void)interrupt->SetLevel(oldLevel);
 }
 
@@ -377,6 +384,14 @@ void NachOSThread::PutThreadToSleep() {
     status = BLOCKED;
     while ((nextThread = scheduler->FindNextThreadToRun()) == NULL)
         interrupt->Idle(); // no one to run, wait for an interrupt
+
+    // Ignore runtime of main thread
+    if (GetPID()) {
+        int runTime = tstats->getRunTimeAndStop();
+        printf("[%d] Sleeping out runtime: %d\n", GetPID(), runTime);
+        stats->newBurst(runTime);
+        UpdatePriority();
+    }
 
     scheduler->Schedule(nextThread); // returns when we've been signalled
 }
@@ -602,3 +617,60 @@ void NachOSThread::IncInstructionCount(void) { instructionCount++; }
 //----------------------------------------------------------------------
 
 unsigned NachOSThread::GetInstructionCount(void) { return instructionCount; }
+
+//----------------------------------------------------------------------
+// NachOSThread::UpdatePriority
+//  Updates priority value of the thread as required by the
+//  scheduling Algorithm
+//----------------------------------------------------------------------
+void NachOSThread::UpdatePriority() {
+    int burstLength = tstats->lastBurst;
+
+    // We update the cpuBurst parameter of each thread only
+    // In every scheduling step, this parameter is updated
+    // and it is added to thread->priority to get the final
+    // scheduling priority.
+    //
+    // thread->priority value is never changed
+    switch(scheduler->schedAlgo) {
+        // Case 2:
+        // Non-pre-emptive shortest job first scheduling
+        // Use predicted cpu burst as priority level
+        case 2:
+            // Ignore 0 burst length
+            // Confirmed from sir over email
+            if (burstLength) {
+                priority = (priority +
+                            burstLength)/2;
+            }
+            break;
+
+        // Case 7-10:
+        // Pre-emptive UNIX scheduling
+        // We do not touch the priority values in this case
+        // cpuCount is kept dynamic instead
+        case 7:
+        case 8:
+        case 9:
+        case 10:
+            // Only if non-zero burst
+            if (burstLength > 0) {
+                cpuCount = cpuCount + burstLength;
+                printf("[%d] cpuCount: %d\n", GetPID(), cpuCount);
+            }
+
+            break;
+
+        // Case 1, 3-6
+        default:
+            // Keep updating cpuCount as an ageing value
+            // Useful for both non-preemptive and for
+            // round robin
+            //
+            // Processes scheduled in the past will have low value of
+            // cpuCount variable, and thus will be scheduled first
+            // Which is what was to be done in round robin
+            priority = stats->totalTicks;
+    }
+    return;
+}

@@ -82,16 +82,16 @@ public:
     // Returns waiting time in ready queue
     // Also, sets startTicks assuming the
     // thread is now scheduled
-    int getWaitTimeAndStart(int curTicks);
+    int getWaitTimeAndStart();
 
     // Returns CPU burst time
     // Also updates endTicks
-    int getRunTimeAndStop(int curTicks);
+    int getRunTimeAndStop();
 
     // Sets the end time to reflect time
     // when thread goes into ready queue
     // Lets us track it's waiting time
-    void putIntoReady(int curTicks);
+    void putIntoReady();
 
     // Gets the length of current CPU Burst
     // to check whether to preempt or not
@@ -204,6 +204,7 @@ public:
     void RestoreUserState();            // restore user-level register state
     void ResetReturnValue ();           // Used by SYScall_Fork to set the return value of child to zero
 
+    void UpdatePriority();      // Called after every burst
     ProcessAddrSpace *space;            // User code this thread is running.
     int priority, cpuCount;             // Priority for Scheduling
 #endif

@@ -55,13 +55,12 @@ void NachOSscheduler::ThreadIsReadyToRun(NachOSThread *thread) {
 
     thread->setStatus(READY);
 
-    int curTicks = stats->totalTicks;
-    thread->tstats->putIntoReady(curTicks);
+    thread->tstats->putIntoReady();
 
 #ifdef USER_PROGRAM
-    // In case of UNIX scheduling, this will be handled
-    // completely at the time of context switch
-    UpdatePriority(thread);
+    // In UNIX scheduler, will re-sort the queue according to
+    // the halved priority values
+    ResortReadyQueue();
 
     readyThreadList->SortedInsert((void *)thread,
                                   thread->priority + thread->cpuCount);
@@ -99,10 +98,9 @@ NachOSThread *NachOSscheduler::FindNextThreadToRun() {
 void NachOSscheduler::Schedule(NachOSThread *nextThread) {
     NachOSThread *oldThread = currentThread;
 
-    // Utilize the stats from old thread
-    int curTicks = stats->totalTicks;
-    int runTime = oldThread->tstats->getRunTimeAndStop(curTicks);
-    stats->newBurst(runTime);
+    // The stats for the old thread have already been accounted for
+    // Schedule is only called from Yield, Sleep and Exit
+    // All 3 have a separate check for updating stats
 
 #ifdef USER_PROGRAM                   // ignore until running user programs
     if (currentThread->space != NULL) { // if this thread is a user program,
@@ -117,11 +115,19 @@ void NachOSscheduler::Schedule(NachOSThread *nextThread) {
     currentThread = nextThread;        // switch to the next thread
     currentThread->setStatus(RUNNING); // nextThread is now running
 
+    printf("[%d][Time: %d] Scheduling with priority: %d\n", currentThread->GetPID(), stats->totalTicks, currentThread->priority + currentThread->cpuCount/2);
+
     DEBUG(
         't',
         "Switching from thread \"%s\" with pid %d to thread \"%s\" with pid %d\n",
         oldThread->getName(), oldThread->GetPID(), nextThread->getName(),
         nextThread->GetPID());
+
+    // Prepare the stats for new thread
+    // TODO: Check if this is fine. Moved up from
+    // its earlier location which was after _SWITCH
+    int waitTimeInQueue = currentThread->tstats->getWaitTimeAndStart();
+    stats->newWait(waitTimeInQueue);
 
     // This is a machine-dependent assembly language routine defined
     // in switch.s.  You may have to think
@@ -134,9 +140,9 @@ void NachOSscheduler::Schedule(NachOSThread *nextThread) {
           currentThread->GetPID());
 
     // Prepare the stats for new thread
-    curTicks = stats->totalTicks;
-    int waitTimeInQueue = currentThread->tstats->getWaitTimeAndStart(curTicks);
-    stats->newWait(waitTimeInQueue);
+    // curTicks = stats->totalTicks;
+    // int waitTimeInQueue = currentThread->tstats->getWaitTimeAndStart(curTicks);
+    // stats->newWait(waitTimeInQueue);
 
     // If the old thread gave up the processor because it was finishing,
     // we need to delete its carcass.  Note we cannot delete the thread
@@ -165,9 +171,8 @@ void NachOSscheduler::Schedule(NachOSThread *nextThread) {
 
 void NachOSscheduler::Tail() {
     // Prepare the stats for new thread
-    int curTicks = stats->totalTicks;
-    int waitTimeInQueue = currentThread->tstats->getWaitTimeAndStart(curTicks);
-    stats->newWait(waitTimeInQueue);
+    // int waitTimeInQueue = currentThread->tstats->getWaitTimeAndStart();
+    // stats->newWait(waitTimeInQueue);
 
     // If the old thread gave up the processor because it was finishing,
     // we need to delete its carcass.  Note we cannot delete the thread
@@ -198,68 +203,32 @@ void NachOSscheduler::Print() {
 }
 
 #ifdef USER_PROGRAM
-//----------------------------------------------------------------------
-// NachOSscheduler::UpdatePriority
-//  Updates priority value of threads as required by the
-//  scheduling Algorithm
-//
-//----------------------------------------------------------------------
+void NachOSscheduler::ResortReadyQueue() {
+    if (scheduler->schedAlgo >= 7) {
 
-void NachOSscheduler::UpdatePriority(NachOSThread *thread) {
-    int burstLength = thread->tstats->lastBurst;
-    List *tmpList = new List;
-    NachOSThread *retThread;
+        List *tmpList = new List;
+        NachOSThread *retThread;
 
-    // We update the cpuBurst parameter of each thread only
-    // In every scheduling step, this parameter is updated
-    // and it is added to thread->priority to get the final
-    // scheduling priority.
-    //
-    // thread->priority value is never changed
-    switch(scheduler->schedAlgo) {
-        // Non-pre-emptive shortest job first scheduling
-        // Use predicted cpu burst as priority level
-        case 2:
-            thread->priority = (thread->priority +
-                                burstLength)/2;
-            break;
-
-        // Pre-emptive UNIX scheduling
-        case 7:
-        case 8:
-        case 9:
-        case 10:
-            // Only if non-zero burst
-            if (burstLength > 0) {
-                thread->cpuCount = thread->cpuCount + burstLength / 2;
-
-                for(unsigned int i = 0; i < thread_index; i++) {
-                    if (!exitThreadArray[i]) {
-                        threadArray[i]->cpuCount = (threadArray[i]->cpuCount) / 2;
-                    }
-                }
-
-                while (!readyThreadList->IsEmpty()) {
-                    retThread = (NachOSThread*)readyThreadList->Remove();
-                    retThread->cpuCount = retThread->cpuCount / 2;
-                    tmpList->SortedInsert((void *)retThread,
-                                          retThread->priority + (retThread->cpuCount / 2));
-                }
-                readyThreadList = tmpList;
+        for(unsigned int i = 0; i < thread_index; i++) {
+            if (!exitThreadArray[i]) {
+                threadArray[i]->cpuCount = (threadArray[i]->cpuCount) / 2;
             }
+        }
 
-            break;
+        while (!readyThreadList->IsEmpty()) {
+            retThread = (NachOSThread*)readyThreadList->Remove();
+            tmpList->SortedInsert((void *)retThread,
+                                  retThread->priority + (retThread->cpuCount / 2));
+        }
+        readyThreadList = tmpList;
 
-        default:
-            // Keep updating cpuCount as an ageing value
-            // Useful for both non-preemptive and for
-            // round robin
-            //
-            // Processes scheduled in the past will have low value of
-            // cpuCount variable, and thus will be scheduled first
-            // Which is what was to be done in round robin
-            thread->priority = stats->totalTicks;
+        printf("Priorities:\n");
+        for(unsigned int i = 1; i < thread_index; i++) {
+            if (!exitThreadArray[i]) {
+                printf("%d ", threadArray[i]->priority + threadArray[i]->cpuCount/2);
+            }
+        }
+        printf("\n");
     }
-    return;
 }
 #endif
