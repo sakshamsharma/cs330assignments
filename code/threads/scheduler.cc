@@ -58,10 +58,6 @@ void NachOSscheduler::ThreadIsReadyToRun(NachOSThread *thread) {
     thread->tstats->putIntoReady();
 
 #ifdef USER_PROGRAM
-    // In UNIX scheduler, will re-sort the queue according to
-    // the halved priority values
-    ResortReadyQueue();
-
     readyThreadList->SortedInsert((void *)thread,
                                   thread->priority + thread->cpuCount);
 #else
@@ -78,6 +74,11 @@ void NachOSscheduler::ThreadIsReadyToRun(NachOSThread *thread) {
 //----------------------------------------------------------------------
 
 NachOSThread *NachOSscheduler::FindNextThreadToRun() {
+#ifdef USER_PROGRAM
+    // In UNIX scheduler, will re-sort the queue according to
+    // the halved priority values
+    ResortReadyQueue();
+#endif
     return (NachOSThread *)readyThreadList->Remove();
 }
 
@@ -115,7 +116,9 @@ void NachOSscheduler::Schedule(NachOSThread *nextThread) {
     currentThread = nextThread;        // switch to the next thread
     currentThread->setStatus(RUNNING); // nextThread is now running
 
+#ifdef USER_PROGRAM
     printf("[%d][Time: %d] Scheduling with priority: %d\n", currentThread->GetPID(), stats->totalTicks, currentThread->priority + currentThread->cpuCount/2);
+#endif
 
     DEBUG(
         't',

@@ -276,7 +276,10 @@ void NachOSThread::Exit(bool terminateSim, int exitcode) {
     printf("[%d] Exiting runtime: %d\n", currentThread->GetPID(), runTime);
     stats->newBurst(runTime);
     stats->newCompletion(stats->totalTicks - tstats->overallStartTime);
-    UpdatePriority();           // Redundant
+
+#ifdef USER_PROGRAM
+    UpdatePriority();
+#endif
 
     threadToBeDestroyed = currentThread;
 
@@ -330,14 +333,18 @@ void NachOSThread::YieldCPU() {
 
     DEBUG('t', "Yielding thread \"%s\" with pid %d\n", getName(), pid);
 
-    scheduler->ThreadIsReadyToRun(this);
-    nextThread = scheduler->FindNextThreadToRun();
-
     // Add it's burst to stats
     int runTime = tstats->getRunTimeAndStop();
     printf("[%d] Switching out runtime: %d\n", GetPID(), runTime);
     stats->newBurst(runTime);
+
+#ifdef USER_PROGRAM
     UpdatePriority();
+#endif
+
+    // Now find a better thread
+    scheduler->ThreadIsReadyToRun(this);
+    nextThread = scheduler->FindNextThreadToRun();
 
     if (nextThread != currentThread && nextThread != NULL) {
         // ThreadIsReadyToRun does not update the stats
@@ -390,7 +397,10 @@ void NachOSThread::PutThreadToSleep() {
         int runTime = tstats->getRunTimeAndStop();
         printf("[%d] Sleeping out runtime: %d\n", GetPID(), runTime);
         stats->newBurst(runTime);
+
+#ifdef USER_PROGRAM
         UpdatePriority();
+#endif
     }
 
     scheduler->Schedule(nextThread); // returns when we've been signalled
@@ -618,6 +628,7 @@ void NachOSThread::IncInstructionCount(void) { instructionCount++; }
 
 unsigned NachOSThread::GetInstructionCount(void) { return instructionCount; }
 
+#ifdef USER_PROGRAM
 //----------------------------------------------------------------------
 // NachOSThread::UpdatePriority
 //  Updates priority value of the thread as required by the
@@ -674,3 +685,4 @@ void NachOSThread::UpdatePriority() {
     }
     return;
 }
+#endif
