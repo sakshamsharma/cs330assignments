@@ -40,7 +40,7 @@ int ThreadStats::getWaitTimeAndStart(int curTicks) {
     int waitTime = curTicks - endTicks;
     startTicks = curTicks;
     if (currentThread->GetPID() ) {
-        printf("Entering into preocessor @ %d\n", curTicks);
+        printf("[%d] Entering into processor @ %d\n", currentThread->GetPID(), curTicks);
     }
     return waitTime;
 }
@@ -50,6 +50,9 @@ int ThreadStats::getRunTimeAndStop(int curTicks) {
     int runTime = curTicks - startTicks;
     lastBurst = runTime;
     endTicks = curTicks;
+    if (currentThread->GetPID() ) {
+        printf("[%d] Runtime @ %d\n", currentThread->GetPID(), runTime);
+    }
     return runTime;
 }
 
@@ -285,6 +288,7 @@ void NachOSThread::Exit(bool terminateSim, int exitcode) {
            // Utilize the stats from old thread
             int curTicks = stats->totalTicks;
             int runTime = currentThread->tstats->getRunTimeAndStop(curTicks);
+            printf("[%d] Switching out runtime: %d\n", currentThread->GetPID(), runTime);
             stats->newBurst(runTime);
 
             DEBUG('i', "Machine idle.  No interrupts to do.\n");
@@ -334,7 +338,7 @@ void NachOSThread::YieldCPU() {
         // In case where there will be no other job
         int curTicks = stats->totalTicks;
         int runTime = tstats->getRunTimeAndStop(curTicks);
-        printf("Runtime for Current Thread %d from start time: %d and current time %d\n", runTime, currentThread->tstats->startTicks, curTicks);
+        printf("[%d] Switching out runtime: %d\n", currentThread->GetPID(), runTime);
         stats->newBurst(runTime);
 
         (void)tstats->getWaitTimeAndStart(curTicks);
