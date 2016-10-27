@@ -142,9 +142,9 @@ void NachOSscheduler::Schedule(NachOSThread *nextThread) {
     DEBUG('t', "Now in thread \"%s\" with pid %d\n", currentThread->getName(),
           currentThread->GetPID());
 
+    // Deprecated: Avoid using this here
     // Prepare the stats for new thread
-    // curTicks = stats->totalTicks;
-    // int waitTimeInQueue = currentThread->tstats->getWaitTimeAndStart(curTicks);
+    // int waitTimeInQueue = currentThread->tstats->getWaitTimeAndStart();
     // stats->newWait(waitTimeInQueue);
 
     // If the old thread gave up the processor because it was finishing,
@@ -173,11 +173,13 @@ void NachOSscheduler::Schedule(NachOSThread *nextThread) {
 //----------------------------------------------------------------------
 
 void NachOSscheduler::Tail() {
+    // printf("***%d***\n", currentThread->GetPID());
+    // Deprecated: Avoid using this here
     // Prepare the stats for new thread
     // int waitTimeInQueue = currentThread->tstats->getWaitTimeAndStart();
     // stats->newWait(waitTimeInQueue);
 
-    // If the old thread gave up the processor because it was finishing,
+    // if the old thread gave up the processor because it was finishing,
     // we need to delete its carcass.  Note we cannot delete the thread
     // before now (for example, in NachOSThread::FinishThread()), because up to
     // this
