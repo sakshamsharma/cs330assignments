@@ -49,8 +49,11 @@ void StartBatchOfProcesses(char files[][300], int *priorities, int batchSize) {
     ProcessAddrSpace *space;
     OpenFile *executable;
     int i;
-    IntStatus oldLevel = interrupt->SetLevel(IntOff); //needed because 
-    // NachosThread::Schedule updates the timer if the interrupt level is on
+
+    // Needed because NachOSThread::Schedule updates the
+    // timer if the interrupt level is on
+    IntStatus oldLevel = interrupt->SetLevel(IntOff);
+
     for (i=0; i<batchSize; i++) {
         executable = fileSystem->Open(files[i]);
         if (executable == NULL) {
@@ -59,9 +62,12 @@ void StartBatchOfProcesses(char files[][300], int *priorities, int batchSize) {
         }
         thread = new NachOSThread(files[i]);
         space = new ProcessAddrSpace(executable);
-        if (scheduler->schedAlgo >= 7)
-            thread->priority = priorities[i] + 50;
         thread->space = space;
+
+        if (scheduler->schedAlgo >= 7) {
+            // Only needed in case of UNIX scheduling
+            thread->priority = priorities[i] + 50;
+        }
 
         delete executable; // close file
 

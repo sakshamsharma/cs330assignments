@@ -61,7 +61,8 @@ void NachOSscheduler::ThreadIsReadyToRun(NachOSThread *thread) {
 #ifdef USER_PROGRAM
     // In case of UNIX scheduling, this will be handled
     // completely at the time of context switch
-    UpdatePriority(thread); 
+    UpdatePriority(thread);
+
     readyThreadList->SortedInsert((void *)thread,
                                   thread->priority + thread->cpuCount);
 #else
@@ -108,8 +109,6 @@ void NachOSscheduler::Schedule(NachOSThread *nextThread) {
         currentThread->SaveUserState();   // save the user's CPU registers
         currentThread->space->SaveStateOnSwitch();
     }
-
-
 #endif
 
     oldThread->CheckOverflow(); // check if the old thread
@@ -211,36 +210,54 @@ void NachOSscheduler::UpdatePriority(NachOSThread *thread) {
     List *tmpList = new List;
     NachOSThread *retThread;
 
+    // We update the cpuBurst parameter of each thread only
+    // In every scheduling step, this parameter is updated
+    // and it is added to thread->priority to get the final
+    // scheduling priority.
+    //
+    // thread->priority value is never changed
     switch(scheduler->schedAlgo) {
-        // NP-SJF
+        // Non-pre-emptive shortest job first scheduling
+        // Use predicted cpu burst as priority level
         case 2:
-            // No per-process priority supplied via file
-            // Using predicted cpu burst as priority value
             thread->priority = (thread->priority +
                                 burstLength)/2;
             break;
 
-            // P-UNIX
+        // Pre-emptive UNIX scheduling
         case 7:
         case 8:
         case 9:
         case 10:
-            thread->cpuCount = thread->cpuCount + burstLength;
-            for(unsigned int i = 0; i < thread_index; ++ i) {
-                if (!exitThreadArray[i]) {
-                    threadArray[i]->cpuCount = (threadArray[i]->cpuCount)/2;
+            // Only if non-zero burst
+            if (burstLength > 0) {
+                thread->cpuCount = thread->cpuCount + burstLength / 2;
+
+                for(unsigned int i = 0; i < thread_index; i++) {
+                    if (!exitThreadArray[i]) {
+                        threadArray[i]->cpuCount = (threadArray[i]->cpuCount) / 2;
+                    }
                 }
+
+                while (!readyThreadList->IsEmpty()) {
+                    retThread = (NachOSThread*)readyThreadList->Remove();
+                    retThread->cpuCount = retThread->cpuCount / 2;
+                    tmpList->SortedInsert((void *)retThread,
+                                          retThread->priority + (retThread->cpuCount / 2));
+                }
+                readyThreadList = tmpList;
             }
-            while (!readyThreadList->IsEmpty()) {
-                retThread = (NachOSThread*)readyThreadList->Remove();
-                tmpList->SortedInsert((void *)retThread,
-                                      retThread->priority + retThread->cpuCount);
-            }
-            readyThreadList = tmpList;
+
             break;
 
-            // NP-FCFS and P-RR
         default:
+            // Keep updating cpuCount as an ageing value
+            // Useful for both non-preemptive and for
+            // round robin
+            //
+            // Processes scheduled in the past will have low value of
+            // cpuCount variable, and thus will be scheduled first
+            // Which is what was to be done in round robin
             thread->priority = stats->totalTicks;
     }
     return;

@@ -82,12 +82,18 @@ NachOSThread::NachOSThread(char *threadName) {
 #ifdef USER_PROGRAM
     space = NULL;
     stateRestored = true;
-    // If Scheduling Algo iis NP-SJF, then initial priority is 10, else
+
+    // If Scheduling Algo is NP-SJF, then initial priority is 10, else
     // priority initialized to current timestamp
-    if (scheduler->schedAlgo == 2)
+    if (scheduler->schedAlgo == 2) {
         priority = 10;
-    else
+    } else {
+        // Will be overwritten if UNIX scheduler is used
+        // In that case, priority will be read from the file
         priority = stats->totalTicks;
+    }
+
+    // To be used in UNIX scheduler
     cpuCount = 0;
 #endif
 
