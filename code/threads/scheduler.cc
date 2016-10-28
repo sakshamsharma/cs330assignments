@@ -117,8 +117,9 @@ void NachOSscheduler::Schedule(NachOSThread *nextThread) {
     currentThread->setStatus(RUNNING); // nextThread is now running
 
 #ifdef USER_PROGRAM
-    if (CustomDebug)
+    if (CustomDebug) {
         printf("[%d][Time: %d] Scheduling with priority: %d\n", currentThread->GetPID(), stats->totalTicks, currentThread->priority + currentThread->cpuCount/2);
+    }
 #endif
 
     DEBUG(

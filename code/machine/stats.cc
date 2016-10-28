@@ -19,7 +19,7 @@
 #define max(a,b)  (((a) > (b)) ? (a) : (b))
 
 int TimerTicks = 100;
-const bool CustomDebug = true;
+const bool CustomDebug = false;
 
 //----------------------------------------------------------------------
 // Statistics::Statistics

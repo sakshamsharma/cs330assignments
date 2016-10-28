@@ -1,4 +1,4 @@
-for index in {1..4};
+for index in {1..6};
 do
     echo "File Batch${index}"
 
