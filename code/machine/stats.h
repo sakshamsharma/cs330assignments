@@ -74,5 +74,6 @@ public:
 #define NetworkTime     100     // time to send or receive one packet
 extern int TimerTicks;     // (average) time between timer interrupts
 extern const bool CustomDebug;
+extern bool BatchMode;
 
 #endif // STATS_H

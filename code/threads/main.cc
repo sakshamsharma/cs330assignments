@@ -64,6 +64,7 @@ extern void StartUserProcess(char *file),
     ConsoleTest(char *in, char *out),
     StartBatchOfProcesses(char files[][300], int *priorities, int batchSize);
 extern void MailTest(int networkID);
+extern bool BatchMode = false;
 
 //----------------------------------------------------------------------
 // main
@@ -100,6 +101,7 @@ int main(int argc, char **argv) {
             printf("Requires file name containing batch of processes\n");
             return 1;
         }
+        BatchMode = true;
         char files[100][300];
         int priorities[100];
         int cnt = 0;

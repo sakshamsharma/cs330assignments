@@ -24,6 +24,7 @@
 #include <stdio.h>
 
 extern const bool CustomDebug;
+extern bool BatchMode;
 
 #define STACK_FENCEPOST 0xdeadbeef // this is put at the top of the
                                    // execution stack, for detecting
@@ -279,13 +280,15 @@ void NachOSThread::SetChildExitCode(int childpid, int ecode) {
 //----------------------------------------------------------------------
 
 void NachOSThread::Exit(bool terminateSim, int exitcode) {
-    // Utilize the stats from this thread before it is removed
-    int runTime = currentThread->tstats->getRunTimeAndStop();
-    if (CustomDebug) {
-        printf("[%d] Exiting runtime: %d\n", currentThread->GetPID(), runTime);
+    if (GetPID() || !BatchMode) {
+        // Utilize the stats from this thread before it is removed
+        int runTime = currentThread->tstats->getRunTimeAndStop();
+        if (CustomDebug) {
+            printf("[%d] Exiting runtime: %d\n", currentThread->GetPID(), runTime);
+        }
+        stats->newBurst(runTime, priority);
+        stats->newCompletion(stats->totalTicks - tstats->overallStartTime);
     }
-    stats->newBurst(runTime, priority);
-    stats->newCompletion(stats->totalTicks - tstats->overallStartTime);
 
     (void)interrupt->SetLevel(IntOff);
     ASSERT(this == currentThread);
@@ -341,12 +344,14 @@ void NachOSThread::Exit(bool terminateSim, int exitcode) {
 //----------------------------------------------------------------------
 
 void NachOSThread::YieldCPU() {
-    // Add it's burst to stats
-    int runTime = tstats->getRunTimeAndStop();
-    if (CustomDebug) {
-        printf("[%d] Switching out runtime: %d\n", GetPID(), runTime);
+    if (GetPID() || !BatchMode) {
+        // Add it's burst to stats
+        int runTime = tstats->getRunTimeAndStop();
+        if (CustomDebug) {
+            printf("[%d] Switching out runtime: %d\n", GetPID(), runTime);
+        }
+        stats->newBurst(runTime, priority);
     }
-    stats->newBurst(runTime, priority);
 
     NachOSThread *nextThread;
     IntStatus oldLevel = interrupt->SetLevel(IntOff);
@@ -399,7 +404,7 @@ void NachOSThread::YieldCPU() {
 //----------------------------------------------------------------------
 void NachOSThread::PutThreadToSleep() {
     // Ignore runtime of main thread
-    if (GetPID()) {
+    if (GetPID() || !BatchMode) {
         int runTime = tstats->getRunTimeAndStop();
         stats->newBurst(runTime, priority);
         if (CustomDebug) {
