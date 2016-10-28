@@ -101,6 +101,7 @@ NachOSThread::NachOSThread(char *threadName) {
 #ifdef USER_PROGRAM
     space = NULL;
     stateRestored = true;
+#endif
 
     // If Scheduling Algo is NP-SJF, then initial priority is 10, else
     // priority initialized to current timestamp
@@ -114,7 +115,6 @@ NachOSThread::NachOSThread(char *threadName) {
 
     // To be used in UNIX scheduler
     cpuCount = 0;
-#endif
 
     threadArray[thread_index] = this;
     pid = thread_index;

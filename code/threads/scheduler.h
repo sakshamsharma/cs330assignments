@@ -50,11 +50,9 @@ public:
 
     // Returns size of readyThreadList
     int GetListSize() { return readyThreadList->GetSize(); };
-#ifdef USER_PROGRAM
     SchedulingAlgo schedAlgo;       // Scheduling Algorithm for the scheduler
     void ResortReadyQueue();                   // For UNIX scheduler
 
-#endif
 private:
     List *readyThreadList;          // queue of threads that are ready to run,
                                     // but not running
