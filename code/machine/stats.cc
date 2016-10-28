@@ -41,6 +41,7 @@ Statistics::Statistics(int algo) {
 
     averageWait = 0;
     totalWaits = 0;
+    totalWaitTime = 0;
 }
 
 void Statistics::newBurst(int burstTime, int expectedBurst) {
@@ -61,8 +62,9 @@ void Statistics::newBurst(int burstTime, int expectedBurst) {
 }
 
 void Statistics::newWait(int waitTime) {
-    double totalWaitTime = averageWait * totalWaits + waitTime;
-    averageWait = (totalWaitTime * 1.0) / (totalWaits+1);
+    double totalWaitTimeDouble = averageWait * totalWaits + waitTime;
+    averageWait = (totalWaitTimeDouble * 1.0) / (totalWaits+1);
+    totalWaitTime += waitTime;
     totalWaits++;
 }
 
@@ -90,14 +92,16 @@ void Statistics::Print() {
 
     printf("Total CPU busy time: %d\n", systemTicks+userTicks);
     printf("Total execution time: %d\n\n", totalTicks);
-    printf("CPU utilization: %.2f%%\n",
+    printf("CPU utilization: %.2f\n",
            ((systemTicks+userTicks)*100.0)/totalTicks);
     printf("Maximum CPU burst length: %d\n", maxBurst);
     printf("Minimum CPU burst length: %d\n", minBurst);
     printf("Average CPU burst length: %.1lf\n", averageBurst);
     printf("Number of non-zero CPU bursts: %d\n\n", totalNonZeroBursts);
 
-    printf("Average waiting time: %.1lf\n", averageWait);
+    // Per process average waiting time is total wait time
+    // divided by total number of processes
+    printf("Average waiting time: %.1lf\n", (totalWaitTime*1.0)/compTimes.size());
 
     int totalSum = 0;
     int minComp = INT_MAX, maxComp = 0;
@@ -110,10 +114,10 @@ void Statistics::Print() {
     printf("Maximum completion time: %d\n", maxComp);
     printf("Minimum completion time: %d\n", minComp);
 
-    float averageComp = (totalSum*1.0)/compTimes.size();
+    double averageComp = (totalSum*1.0)/compTimes.size();
     printf("Average completion time: %.2f\n", averageComp);
 
-    float secondMoment = 0.0;
+    double secondMoment = 0.0;
     for (std::vector<int>::iterator it = compTimes.begin();
          it!=compTimes.end(); it++) {
         secondMoment += pow(*it-averageComp, 2);
