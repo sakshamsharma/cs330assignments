@@ -125,8 +125,8 @@ void Statistics::Print() {
     printf("Variance of completion times: %.2f\n", secondMoment/compTimes.size());
 
     if (schedAlgo == 2) {
-        printf("Average CPU burst estimation error: %.1lf\n", (burstErrors*1.0)/totalNonZeroBursts);
+        printf("CPU burst estimation error/CPU bursts: %.3lf\n", (burstErrors*1.0)/(averageBurst*totalNonZeroBursts));
     } else {
-        printf("Average CPU burst estimation error: 0\n");
+        printf("Average CPU burst estimation error: N/A\n");
     }
 }
