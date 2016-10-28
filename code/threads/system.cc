@@ -46,6 +46,8 @@ PostOffice *postOffice;
 
 // External definition, to allow us to take a pointer to this function
 extern void Cleanup();
+extern int TimerTicks;
+extern const bool CustomDebug;
 
 //----------------------------------------------------------------------
 // TimerInterruptHandler
@@ -97,9 +99,9 @@ static void TimerInterruptHandler(int dummy) {
 //----------------------------------------------------------------------
 static void SetTimerQuantum(int val) {
     if (val == 1 || val == 2) {
-        TimerTicks = 20;
+        TimerTicks = 100;
     } else {
-        TimerTicks = 20;
+        TimerTicks = 100;
     }
 }
 
