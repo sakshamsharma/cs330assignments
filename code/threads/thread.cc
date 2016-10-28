@@ -266,16 +266,16 @@ void NachOSThread::SetChildExitCode(int childpid, int ecode) {
 //----------------------------------------------------------------------
 
 void NachOSThread::Exit(bool terminateSim, int exitcode) {
-    (void)interrupt->SetLevel(IntOff);
-    ASSERT(this == currentThread);
-
-    DEBUG('t', "Finishing thread \"%s\" with pid %d\n", getName(), pid);
-
     // Utilize the stats from this thread before it is removed
     int runTime = currentThread->tstats->getRunTimeAndStop();
     printf("[%d] Exiting runtime: %d\n", currentThread->GetPID(), runTime);
     stats->newBurst(runTime);
     stats->newCompletion(stats->totalTicks - tstats->overallStartTime);
+
+    (void)interrupt->SetLevel(IntOff);
+    ASSERT(this == currentThread);
+
+    DEBUG('t', "Finishing thread \"%s\" with pid %d\n", getName(), pid);
 
 #ifdef USER_PROGRAM
     UpdatePriority();
@@ -326,17 +326,17 @@ void NachOSThread::Exit(bool terminateSim, int exitcode) {
 //----------------------------------------------------------------------
 
 void NachOSThread::YieldCPU() {
+    // Add it's burst to stats
+    int runTime = tstats->getRunTimeAndStop();
+    printf("[%d] Switching out runtime: %d\n", GetPID(), runTime);
+    stats->newBurst(runTime);
+
     NachOSThread *nextThread;
     IntStatus oldLevel = interrupt->SetLevel(IntOff);
 
     ASSERT(this == currentThread);
 
     DEBUG('t', "Yielding thread \"%s\" with pid %d\n", getName(), pid);
-
-    // Add it's burst to stats
-    int runTime = tstats->getRunTimeAndStop();
-    printf("[%d] Switching out runtime: %d\n", GetPID(), runTime);
-    stats->newBurst(runTime);
 
 #ifdef USER_PROGRAM
     UpdatePriority();
@@ -381,17 +381,6 @@ void NachOSThread::YieldCPU() {
 //  off the ready list, and switching to it.
 //----------------------------------------------------------------------
 void NachOSThread::PutThreadToSleep() {
-    NachOSThread *nextThread;
-
-    ASSERT(this == currentThread);
-    ASSERT(interrupt->getLevel() == IntOff);
-
-    DEBUG('t', "Sleeping thread \"%s\" with pid %d\n", getName(), pid);
-
-    status = BLOCKED;
-    while ((nextThread = scheduler->FindNextThreadToRun()) == NULL)
-        interrupt->Idle(); // no one to run, wait for an interrupt
-
     // Ignore runtime of main thread
     if (GetPID()) {
         int runTime = tstats->getRunTimeAndStop();
@@ -402,6 +391,17 @@ void NachOSThread::PutThreadToSleep() {
         UpdatePriority();
 #endif
     }
+
+    NachOSThread *nextThread;
+
+    ASSERT(this == currentThread);
+    ASSERT(interrupt->getLevel() == IntOff);
+
+    DEBUG('t', "Sleeping thread \"%s\" with pid %d\n", getName(), pid);
+
+    status = BLOCKED;
+    while ((nextThread = scheduler->FindNextThreadToRun()) == NULL)
+        interrupt->Idle(); // no one to run, wait for an interrupt
 
     scheduler->Schedule(nextThread); // returns when we've been signalled
 }
