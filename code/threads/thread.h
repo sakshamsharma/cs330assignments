@@ -170,6 +170,7 @@ public:
     unsigned GetInstructionCount();
 
     ThreadStats *tstats;
+    int priority, cpuCount;             // Priority for Scheduling
 
 private:
     // some of the private data for this class is listed above
@@ -206,7 +207,6 @@ public:
 
     void UpdatePriority();      // Called after every burst
     ProcessAddrSpace *space;            // User code this thread is running.
-    int priority, cpuCount;             // Priority for Scheduling
 #endif
 };
 

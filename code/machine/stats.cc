@@ -26,7 +26,8 @@ const bool CustomDebug = true;
 //  Initialize performance metrics to zero, at system startup.
 //----------------------------------------------------------------------
 
-Statistics::Statistics() {
+Statistics::Statistics(int algo) {
+    schedAlgo = algo;
     totalTicks = idleTicks = systemTicks = userTicks = 0;
     numDiskReads = numDiskWrites = 0;
     numConsoleCharsRead = numConsoleCharsWritten = 0;
@@ -35,17 +36,24 @@ Statistics::Statistics() {
     averageBurst = 0;
     minBurst = INT_MAX;
     maxBurst = 0;
+    burstErrors = 0;
     totalNonZeroBursts = 0;
 
     averageWait = 0;
     totalWaits = 0;
 }
 
-void Statistics::newBurst(int burstTime) {
+void Statistics::newBurst(int burstTime, int expectedBurst) {
     if (burstTime > 0) {
         double totalBurstTime = averageBurst * totalNonZeroBursts + burstTime;
         totalNonZeroBursts++;
         averageBurst = (totalBurstTime * 1.0) / totalNonZeroBursts;
+
+        if (burstTime > expectedBurst) {
+            burstErrors += (burstTime - expectedBurst);
+        } else {
+            burstErrors += (expectedBurst - burstTime);
+        }
 
         minBurst = min(burstTime, minBurst);
         maxBurst = max(burstTime, maxBurst);
@@ -89,7 +97,7 @@ void Statistics::Print() {
     printf("Average CPU burst length: %.1lf\n", averageBurst);
     printf("Number of non-zero CPU bursts: %d\n\n", totalNonZeroBursts);
 
-    printf("Average waiting time: %.1lf\n\n", averageWait);
+    printf("Average waiting time: %.1lf\n", averageWait);
 
     int totalSum = 0;
     int minComp = INT_MAX, maxComp = 0;
@@ -111,4 +119,10 @@ void Statistics::Print() {
         secondMoment += pow(*it-averageComp, 2);
     }
     printf("Variance of completion times: %.2f\n", secondMoment/compTimes.size());
+
+    if (schedAlgo == 2) {
+        printf("Average CPU burst estimation error: %.1lf\n", (burstErrors*1.0)/totalNonZeroBursts);
+    } else {
+        printf("Average CPU burst estimation error: 0\n");
+    }
 }

@@ -169,6 +169,8 @@ void Initialize(int argc, char **argv) {
   int netname = 0; // UNIX socket name
 #endif
 
+  int val = 1;     // Stores scheduling algo
+
   for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
     argCount = 1;
     if (!strcmp(*argv, "-d")) {
@@ -197,7 +199,7 @@ void Initialize(int argc, char **argv) {
             // First read the scheduling algo from the first line of the file
             getline(input, firstLine);
 
-            int val, result = readInteger(firstLine.c_str(), val);
+            int result = readInteger(firstLine.c_str(), val);
             if (result != 0 || val < 1 || val > 10) {
                 val = 1;
             }
@@ -226,7 +228,7 @@ void Initialize(int argc, char **argv) {
   }
 
   DebugInit(debugArgs);              // initialize DEBUG messages
-  stats = new Statistics();          // collect statistics
+  stats = new Statistics(val);          // collect statistics
   interrupt = new Interrupt;         // start up interrupt handling
   scheduler = new NachOSscheduler(); // initialize the ready queue
   // if (randomYield)               // start the timer (if needed)

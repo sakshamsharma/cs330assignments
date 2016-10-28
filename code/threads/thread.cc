@@ -23,6 +23,8 @@
 #include "stats.h"
 #include <stdio.h>
 
+extern const bool CustomDebug;
+
 #define STACK_FENCEPOST 0xdeadbeef // this is put at the top of the
                                    // execution stack, for detecting
                                    // stack overflows
@@ -78,7 +80,7 @@ void ThreadStats::putIntoReady() {
 
 // Returns current CPU Burst Length
 int ThreadStats::getCurrBurstLen() {
-    return stats->totalTicks - startTicks;
+    return (stats->totalTicks - startTicks);
 }
 
 //----------------------------------------------------------------------
@@ -282,7 +284,7 @@ void NachOSThread::Exit(bool terminateSim, int exitcode) {
     if (CustomDebug) {
         printf("[%d] Exiting runtime: %d\n", currentThread->GetPID(), runTime);
     }
-    stats->newBurst(runTime);
+    stats->newBurst(runTime, priority);
     stats->newCompletion(stats->totalTicks - tstats->overallStartTime);
 
     (void)interrupt->SetLevel(IntOff);
@@ -344,7 +346,7 @@ void NachOSThread::YieldCPU() {
     if (CustomDebug) {
         printf("[%d] Switching out runtime: %d\n", GetPID(), runTime);
     }
-    stats->newBurst(runTime);
+    stats->newBurst(runTime, priority);
 
     NachOSThread *nextThread;
     IntStatus oldLevel = interrupt->SetLevel(IntOff);
@@ -399,7 +401,7 @@ void NachOSThread::PutThreadToSleep() {
     // Ignore runtime of main thread
     if (GetPID()) {
         int runTime = tstats->getRunTimeAndStop();
-        stats->newBurst(runTime);
+        stats->newBurst(runTime, priority);
         if (CustomDebug) {
             printf("[%d][Time: %d] Sleeping out runtime: %d\n", GetPID(), stats->totalTicks, runTime);
         }

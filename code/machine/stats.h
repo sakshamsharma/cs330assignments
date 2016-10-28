@@ -22,6 +22,7 @@
 
 class Statistics {
 public:
+    int schedAlgo;          // Scheduling algorithm being used
     int totalTicks;         // Total time running Nachos
     int idleTicks;          // Time spent idle (no threads to run)
     int systemTicks;        // Time spent executing system code
@@ -32,6 +33,7 @@ public:
     double averageBurst;       // Average of CPU bursts till now
     int minBurst;           // The shortest non zero burst
     int maxBurst;           // The longest non zero burst
+    long long int burstErrors;  // Only for shortest job first algo
     int totalNonZeroBursts; // Only count the non-zero bursts here
 
     double averageWait;        // Total waiting time in ready queue
@@ -47,9 +49,9 @@ public:
     int numPacketsSent;     // number of packets sent over the network
     int numPacketsRecvd;    // number of packets received over the network
 
-    Statistics();       // initialize everything to zero
+    Statistics(int algo);       // initialize everything to zero
 
-    void newBurst(int burstLength);
+    void newBurst(int burstLength, int expectedBurst);
     void newWait(int waitTime);
     void newCompletion(int startToEnd);
 
