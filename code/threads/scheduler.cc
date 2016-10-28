@@ -53,9 +53,9 @@ void NachOSscheduler::ThreadIsReadyToRun(NachOSThread *thread) {
     DEBUG('t', "Putting thread %s with PID %d on ready list.\n",
           thread->getName(), thread->GetPID());
 
-    thread->setStatus(READY);
-
     thread->tstats->putIntoReady();
+
+    thread->setStatus(READY);
 
 #ifdef USER_PROGRAM
     readyThreadList->SortedInsert((void *)thread,
@@ -117,7 +117,8 @@ void NachOSscheduler::Schedule(NachOSThread *nextThread) {
     currentThread->setStatus(RUNNING); // nextThread is now running
 
 #ifdef USER_PROGRAM
-    printf("[%d][Time: %d] Scheduling with priority: %d\n", currentThread->GetPID(), stats->totalTicks, currentThread->priority + currentThread->cpuCount/2);
+    if (CustomDebug)
+        printf("[%d][Time: %d] Scheduling with priority: %d\n", currentThread->GetPID(), stats->totalTicks, currentThread->priority + currentThread->cpuCount/2);
 #endif
 
     DEBUG(
@@ -227,13 +228,15 @@ void NachOSscheduler::ResortReadyQueue() {
         }
         readyThreadList = tmpList;
 
-        printf("Priorities:\n");
-        for(unsigned int i = 1; i < thread_index; i++) {
-            if (!exitThreadArray[i]) {
-                printf("%d ", threadArray[i]->priority + threadArray[i]->cpuCount/2);
+        if (CustomDebug) {
+            printf("Priorities:\n");
+            for(unsigned int i = 1; i < thread_index; i++) {
+                if (!exitThreadArray[i]) {
+                    printf("%d ", threadArray[i]->priority + threadArray[i]->cpuCount/2);
+                }
             }
+            printf("\n");
         }
-        printf("\n");
     }
 }
 #endif

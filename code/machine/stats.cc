@@ -12,10 +12,14 @@
 #include <limits.h>
 #include "utility.h"
 #include "stats.h"
+#include <stdio.h>
 
 // For some reason, the ones imported from utility aren't visible
 #define min(a,b)  (((a) < (b)) ? (a) : (b))
 #define max(a,b)  (((a) > (b)) ? (a) : (b))
+
+int TimerTicks = 100;
+const bool CustomDebug = true;
 
 //----------------------------------------------------------------------
 // Statistics::Statistics
@@ -39,22 +43,18 @@ Statistics::Statistics() {
 
 void Statistics::newBurst(int burstTime) {
     if (burstTime > 0) {
-        int totalBurstTime = averageBurst * totalNonZeroBursts + burstTime;
+        double totalBurstTime = averageBurst * totalNonZeroBursts + burstTime;
         totalNonZeroBursts++;
-        averageBurst = totalBurstTime / totalNonZeroBursts;
+        averageBurst = (totalBurstTime * 1.0) / totalNonZeroBursts;
 
         minBurst = min(burstTime, minBurst);
         maxBurst = max(burstTime, maxBurst);
-        // if (burstTime > 200) {
-        //     printf("Failed on Burst Time %d\n", burstTime);
-        //     ASSERT(false);
-        // }
     }
 }
 
 void Statistics::newWait(int waitTime) {
-    int totalWaitTime = averageWait * totalWaits + waitTime;
-    averageWait = totalWaitTime / (totalWaits+1);
+    double totalWaitTime = averageWait * totalWaits + waitTime;
+    averageWait = (totalWaitTime * 1.0) / (totalWaits+1);
     totalWaits++;
 }
 
@@ -78,18 +78,18 @@ void Statistics::Print() {
     printf("Network I/O: packets received %d, sent %d\n", numPacketsRecvd,
            numPacketsSent);
 
-    printf("\n\n");
+    printf("\n\n==================\nExperimental data:\n==================\n\n");
 
     printf("Total CPU busy time: %d\n", systemTicks+userTicks);
-    printf("Total execution time: %d\n", totalTicks);
+    printf("Total execution time: %d\n\n", totalTicks);
     printf("CPU utilization: %.2f%%\n",
            ((systemTicks+userTicks)*100.0)/totalTicks);
     printf("Maximum CPU burst length: %d\n", maxBurst);
     printf("Minimum CPU burst length: %d\n", minBurst);
-    printf("Average CPU burst length: %d\n", averageBurst);
-    printf("Number of non-zero CPU bursts: %d\n", totalNonZeroBursts);
+    printf("Average CPU burst length: %.1lf\n", averageBurst);
+    printf("Number of non-zero CPU bursts: %d\n\n", totalNonZeroBursts);
 
-    printf("Average waiting time: %d\n", averageWait);
+    printf("Average waiting time: %.1lf\n\n", averageWait);
 
     int totalSum = 0;
     int minComp = INT_MAX, maxComp = 0;

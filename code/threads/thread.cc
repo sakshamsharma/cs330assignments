@@ -20,6 +20,8 @@
 #include "switch.h"
 #include "synch.h"
 #include "system.h"
+#include "stats.h"
+#include <stdio.h>
 
 #define STACK_FENCEPOST 0xdeadbeef // this is put at the top of the
                                    // execution stack, for detecting
@@ -41,8 +43,10 @@ int ThreadStats::getWaitTimeAndStart() {
     int curTicks = stats->totalTicks;
     int waitTime = curTicks - endTicks;
     startTicks = curTicks;
-    if (currentThread->GetPID() ) {
-        printf("[%d][Time: %d] Running after wait, waiting since %d\n", pid, curTicks, endTicks);
+    if (CustomDebug) {
+        if (currentThread->GetPID() ) {
+            printf("[%d][Time: %d] Running after wait, waiting since %d\n", pid, curTicks, endTicks);
+        }
     }
     return waitTime;
 }
@@ -53,8 +57,10 @@ int ThreadStats::getRunTimeAndStop() {
     int runTime = curTicks - startTicks;
     lastBurst = runTime;
     endTicks = curTicks;
-    if (currentThread->GetPID() ) {
-        printf("[%d][Time: %d] Runtime @ %d\n", pid, curTicks, runTime);
+    if (CustomDebug) {
+        if (currentThread->GetPID() ) {
+            printf("[%d][Time: %d] Runtime @ %d\n", pid, curTicks, runTime);
+        }
     }
     return runTime;
 }
@@ -63,6 +69,11 @@ int ThreadStats::getRunTimeAndStop() {
 // the endTicks reflects the time it waited
 void ThreadStats::putIntoReady() {
     endTicks = stats->totalTicks;
+    if (CustomDebug) {
+        if (currentThread->GetPID() ) {
+            printf("[%d][Time: %d] Into ready queue at @ %d\n", pid, stats->totalTicks, endTicks);
+        }
+    }
 }
 
 // Returns current CPU Burst Length
@@ -268,7 +279,9 @@ void NachOSThread::SetChildExitCode(int childpid, int ecode) {
 void NachOSThread::Exit(bool terminateSim, int exitcode) {
     // Utilize the stats from this thread before it is removed
     int runTime = currentThread->tstats->getRunTimeAndStop();
-    printf("[%d] Exiting runtime: %d\n", currentThread->GetPID(), runTime);
+    if (CustomDebug) {
+        printf("[%d] Exiting runtime: %d\n", currentThread->GetPID(), runTime);
+    }
     stats->newBurst(runTime);
     stats->newCompletion(stats->totalTicks - tstats->overallStartTime);
 
@@ -328,7 +341,9 @@ void NachOSThread::Exit(bool terminateSim, int exitcode) {
 void NachOSThread::YieldCPU() {
     // Add it's burst to stats
     int runTime = tstats->getRunTimeAndStop();
-    printf("[%d] Switching out runtime: %d\n", GetPID(), runTime);
+    if (CustomDebug) {
+        printf("[%d] Switching out runtime: %d\n", GetPID(), runTime);
+    }
     stats->newBurst(runTime);
 
     NachOSThread *nextThread;
@@ -384,8 +399,10 @@ void NachOSThread::PutThreadToSleep() {
     // Ignore runtime of main thread
     if (GetPID()) {
         int runTime = tstats->getRunTimeAndStop();
-        printf("[%d] Sleeping out runtime: %d\n", GetPID(), runTime);
         stats->newBurst(runTime);
+        if (CustomDebug) {
+            printf("[%d][Time: %d] Sleeping out runtime: %d\n", GetPID(), stats->totalTicks, runTime);
+        }
 
 #ifdef USER_PROGRAM
         UpdatePriority();
@@ -667,7 +684,9 @@ void NachOSThread::UpdatePriority() {
             // Only if non-zero burst
             if (burstLength > 0) {
                 cpuCount = cpuCount + burstLength;
-                printf("[%d] cpuCount: %d\n", GetPID(), cpuCount);
+                if (CustomDebug) {
+                    printf("[%d] cpuCount: %d\n", GetPID(), cpuCount);
+                }
             }
 
             break;

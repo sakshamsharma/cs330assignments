@@ -7,6 +7,7 @@
 
 #include "copyright.h"
 #include "system.h"
+#include <fstream>
 
 // This defines *all* of the global data structures used by Nachos.
 // These are all initialized and de-allocated by this file.
@@ -74,7 +75,9 @@ static void TimerInterruptHandler(int dummy) {
       sleepQueueHead = sleepQueueHead->GetNext();
       delete ptr;
     }
-    printf("[%d][Time: %d] Timer interrupt.\n", currentThread->GetPID(), stats->totalTicks);
+    if (CustomDebug) {
+        DEBUG('t', "[%d][Time: %d] Timer interrupt.\n", currentThread->GetPID(), stats->totalTicks);
+    }
 #ifdef USER_PROGRAM
     if ((2 < static_cast<int>(scheduler->schedAlgo)) &&
         (currentThread->tstats->getCurrBurstLen() >= TimerTicks))
@@ -83,6 +86,21 @@ static void TimerInterruptHandler(int dummy) {
     interrupt->YieldOnReturn();
 #endif
   }
+}
+
+//----------------------------------------------------------------------
+// SetTimerQuantum
+//  Take scheduling algo as input (val) and
+//  set the appropriate time quantum
+//
+// "val" is the scheduling algo number
+//----------------------------------------------------------------------
+static void SetTimerQuantum(int val) {
+    if (val == 1 || val == 2) {
+        TimerTicks = 20;
+    } else {
+        TimerTicks = 20;
+    }
 }
 
 //----------------------------------------------------------------------
@@ -141,6 +159,25 @@ void Initialize(int argc, char **argv) {
 #ifdef USER_PROGRAM
     if (!strcmp(*argv, "-s"))
       debugUserProg = TRUE;
+    if (!strcmp(*argv, "-F")) {
+        // Find the scheduling algo for timer
+        if (argc >= 2) {
+            std::ifstream input(argv[1]);
+            std::string firstLine;
+
+            // First read the scheduling algo from the first line of the file
+            getline(input, firstLine);
+
+            int val, result = readInteger(firstLine.c_str(), val);
+            if (result != 0 || val < 1 || val > 10) {
+                val = 1;
+            }
+            SetTimerQuantum(val);
+
+            input.close();
+            argCount = 2;
+        }
+    }
 #endif
 #ifdef FILESYS_NEEDED
     if (!strcmp(*argv, "-f"))

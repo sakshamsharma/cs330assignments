@@ -112,6 +112,7 @@ int main(int argc, char **argv) {
         int val, result = readInteger(firstLine.c_str(), val);
         if (result != 0 || val < 1 || val > 10) {
             printf("Bad scheduling algorithm number: %s\n", firstLine.c_str());
+            input.close();
             return 1;
         }
         scheduler->schedAlgo = static_cast<SchedulingAlgo>(val);
@@ -128,6 +129,7 @@ int main(int argc, char **argv) {
                                          priorities[cnt]);
                     if (result != 0) {
                         printf("Bad priority value in %s\n", line.c_str());
+                        input.close();
                         return 1;
                     }
 
@@ -143,6 +145,7 @@ int main(int argc, char **argv) {
             }
             cnt++;
         }
+        input.close();
 
         printf("Processes to run:\n");
         for (int i=0; i<cnt; i++) {

@@ -29,12 +29,12 @@ public:
     // (this is also equal to # of
     // user instructions executed)
 
-    int averageBurst;       // Average of CPU bursts till now
+    double averageBurst;       // Average of CPU bursts till now
     int minBurst;           // The shortest non zero burst
     int maxBurst;           // The longest non zero burst
     int totalNonZeroBursts; // Only count the non-zero bursts here
 
-    int averageWait;        // Total waiting time in ready queue
+    double averageWait;        // Total waiting time in ready queue
     int totalWaits;         // Helpful for calculating average
 
     std::vector<int>compTimes; // To calculate completion time stats
@@ -70,6 +70,7 @@ public:
 #define SeekTime    500     // time disk takes to seek past one track
 #define ConsoleTime     100 // time to read or write one character
 #define NetworkTime     100     // time to send or receive one packet
-#define TimerTicks  100     // (average) time between timer interrupts
+extern int TimerTicks;     // (average) time between timer interrupts
+extern const bool CustomDebug;
 
 #endif // STATS_H
