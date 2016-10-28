@@ -36,7 +36,6 @@ public:
     long long int burstErrors;  // Only for shortest job first algo
     int totalNonZeroBursts; // Only count the non-zero bursts here
 
-    double averageWait;        // Av waiting time per instance
     long long int totalWaitTime;   // Total waiting time in queue
     int totalWaits;         // Helpful for calculating average
 

@@ -39,7 +39,6 @@ Statistics::Statistics(int algo) {
     burstErrors = 0;
     totalNonZeroBursts = 0;
 
-    averageWait = 0;
     totalWaits = 0;
     totalWaitTime = 0;
 }
@@ -62,8 +61,6 @@ void Statistics::newBurst(int burstTime, int expectedBurst) {
 }
 
 void Statistics::newWait(int waitTime) {
-    double totalWaitTimeDouble = averageWait * totalWaits + waitTime;
-    averageWait = (totalWaitTimeDouble * 1.0) / (totalWaits+1);
     totalWaitTime += waitTime;
     totalWaits++;
 }
