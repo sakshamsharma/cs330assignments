@@ -98,11 +98,38 @@ static void TimerInterruptHandler(int dummy) {
 // "val" is the scheduling algo number
 //----------------------------------------------------------------------
 static void SetTimerQuantum(int val) {
-    if (val == 1 || val == 2) {
-        TimerTicks = 100;
-    } else {
-        TimerTicks = 100;
-    }
+    switch (val) {
+            // Average quantum is 124
+            case 3:
+            case 7:
+                // 1/4th of average quantum
+                TimerTicks = 31;
+                break;
+
+            case 4:
+            case 8:
+                // Half of average quantum
+                TimerTicks = 62;
+                break;
+
+            case 5:
+            case 9:
+                // 3/4th of average quantum
+                TimerTicks = 94;
+                break;
+
+            case 6:
+            case 10:
+                // Minimum quantum that maximizes
+                // CPU utilization
+                TimerTicks = 20;
+                break;
+
+            default:
+                // Default NachOS quantum
+                TimerTicks = 100;
+                break;
+        }
 }
 
 //----------------------------------------------------------------------
