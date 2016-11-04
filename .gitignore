@@ -1,0 +1,55 @@
+**/*.o
+
+# Horrible hack
+# These files get modified on builds
+# But needed to check them in anyway
+*/filesys/Makefile
+*/network/Makefile
+*/threads/Makefile
+*/userprog/Makefile
+*/test/Makeflle
+*/vm/Makefile
+
+# These were the newly created files
+*/bin/coff2noff
+*/filesys/nachos
+*/network/nachos
+*/test/forkjoin
+*/test/forkjoin.coff
+*/test/halt
+*/test/halt.coff
+*/test/matmult
+*/test/matmult.coff
+*/test/printtest
+*/test/printtest.coff
+*/test/shell
+*/test/shell.coff
+*/test/sort
+*/test/sort.coff
+*/test/testexec
+*/test/testexec.coff
+*/test/testregPA
+*/test/testregPA.coff
+*/test/testyield
+*/test/testyield.coff
+*/test/vectorsum
+*/test/vectorsum.coff
+*/test/forkjoin_hard
+*/test/forkjoin_hard.coff
+*/test/testloop
+*/test/testloop.coff
+*/test/testloop1
+*/test/testloop1.coff
+*/test/testloop2
+*/test/testloop2.coff
+*/test/testloop3
+*/test/testloop3.coff
+*/test/testloop4
+*/test/testloop4.coff
+*/test/testloop5
+*/test/testloop5.coff
+*/test/testlooplong
+*/test/testlooplong.coff
+*/threads/nachos
+*/userprog/nachos
+*/vm/nachos
