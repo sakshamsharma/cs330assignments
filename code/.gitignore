@@ -1,1 +1,9 @@
 TAGS
+test/dekker
+test/dekker.coff
+test/shmtest
+test/shmtest.coff
+test/vmtest1
+test/vmtest1.coff
+test/vmtest2
+test/vmtest2.coff

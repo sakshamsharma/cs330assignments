@@ -189,7 +189,7 @@ PostOffice::PostOffice(NetworkAddress addr, double reliability, int nBoxes)
 
 // Finally, create a thread whose sole job is to wait for incoming messages,
 //   and put them in the right mailbox. 
-    NachOSThread *t = new NachOSThread("postal worker");
+    NachOSThread *t = new NachOSThread("postal worker", 0);
 
     t->ThreadFork(PostalHelper, (int) this);
 }
