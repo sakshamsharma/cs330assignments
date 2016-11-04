@@ -36,6 +36,9 @@ class ProcessAddrSpace {
 
     unsigned GetNumPages();
 
+    int AddSharedSpace(int SharedSpaceSize);    // appends SharedSPaceSize bytes of 
+                                                // shared memory
+
     TranslationEntry* GetPageTable();
 
   private:
