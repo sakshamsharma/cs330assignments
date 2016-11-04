@@ -3,12 +3,12 @@
 # Horrible hack
 # These files get modified on builds
 # But needed to check them in anyway
-*/filesys/Makefile
-*/network/Makefile
-*/threads/Makefile
-*/userprog/Makefile
-*/test/Makeflle
-*/vm/Makefile
+#*/filesys/Makefile
+#*/network/Makefile
+#*/threads/Makefile
+#*/userprog/Makefile
+#*/test/Makeflle
+#*/vm/Makefile
 
 # These were the newly created files
 */bin/coff2noff
