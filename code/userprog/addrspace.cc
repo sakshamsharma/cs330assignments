@@ -138,6 +138,7 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
                 ++ numPagesAllocated;
                 NachOSpageTable[i].shared = FALSE;
                 stats->numPageFaults ++;
+                currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
             }
         } else {
             NachOSpageTable[i].physicalPage = parentPageTable[i].physicalPage;
@@ -243,7 +244,7 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
         (end - start), noffH.initData.inFileAddr + (start - noffH.initData.virtualAddr));
     }
     ++ numPagesAllocated;
-
+    currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
 }
 
 //----------------------------------------------------------------------
@@ -255,7 +256,10 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
 //----------------------------------------------------------------------
 
 OpenFile* ProcessAddrSpace::getDupExecutable() {
-    int fileDes = executable->GetFD();
+    int fileDes;
+#ifdef FILESYS_STUB
+    fileDes = executable->GetFD();
+#endif
     OpenFile *duplicate = new OpenFile(fileDes);
     return duplicate;
 }
@@ -268,6 +272,7 @@ OpenFile* ProcessAddrSpace::getDupExecutable() {
 
 ProcessAddrSpace::~ProcessAddrSpace()
 {
+    ASSERT(executable != NULL);
     delete executable;
     delete NachOSpageTable;
 }
