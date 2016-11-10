@@ -143,7 +143,6 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
                 // Copy the contents
                 memcpy(&(machine->mainMemory[startAddrChild]),
                         &(machine->mainMemory[startAddrParent]), PageSize);
-                ++ numPagesAllocated;
                 NachOSpageTable[i].shared = FALSE;
                 stats->numPageFaults ++;
                 currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
@@ -186,11 +185,12 @@ int ProcessAddrSpace::AddSharedSpace(int SharedSpaceSize) {
         NewTranslation[i].ifUsed = NachOSpageTable[i].ifUsed;
     }
 
-
     for (; i < numSharedPages + numPagesInVM; ++ i) {
         NewTranslation[i].ifUsed = TRUE;
         NewTranslation[i].virtualPage = i;
         NewTranslation[i].physicalPage = GetNextPageToWrite(i, -1);
+        bzero(&machine->mainMemory[(NewTranslation[i].physicalPage)*PageSize], PageSize);
+
         NewTranslation[i].valid = TRUE;
         NewTranslation[i].use = FALSE;
         NewTranslation[i].dirty = FALSE;
@@ -199,7 +199,9 @@ int ProcessAddrSpace::AddSharedSpace(int SharedSpaceSize) {
     }
 
 
-    numPagesAllocated += numSharedPages;
+    // This has been done by GetNextPage in loop
+    // numPagesAllocated += numSharedPages;
+
     numPagesInVM += numSharedPages;
 
     delete NachOSpageTable;
@@ -215,7 +217,7 @@ int ProcessAddrSpace::AddSharedSpace(int SharedSpaceSize) {
 //  and write it to swap array if it was dirty
 //----------------------------------------------------------------------
 int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
-    int foundPage = -1;
+    int i, foundPage = -1;
     if (numPagesAllocated == NumPhysPages) {
         if (replacementAlgo == NO_REPL) {
             ASSERT(false);
@@ -228,11 +230,19 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
         } else {
             // Iterate over physical address to
             // find an unused address
+            for (i=0; i<NumPhysPages; i++) {
+                if (machine->memoryUsedBy[i] != -1) {
+                    foundPage = i;
+                    break;
+                }
+            }
+            numPagesAllocated++;
         }
     }
 
     machine->memoryUsedBy[foundPage] = currentThread->GetPID();
     machine->virtualPageNo[foundPage] = vpn;
+
     return foundPage;
 }
 
