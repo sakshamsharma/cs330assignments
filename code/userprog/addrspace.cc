@@ -199,6 +199,16 @@ int ProcessAddrSpace::AddSharedSpace(int SharedSpaceSize) {
 }
 
 //----------------------------------------------------------------------
+// ProcessAddrSpace::GetNextPageToWrite
+// 	Finds next page for page fault handler
+//  and write it to swap array if it was dirty
+//----------------------------------------------------------------------
+int ProcessAddrSpace::GetNextPageToWrite() {
+    ASSERT(numPagesAllocated + 1 <= NumPhysPages);
+    return numPagesAllocated++;
+}
+
+//----------------------------------------------------------------------
 // ProcessAddrSpace::PageFaultHandler
 // 	Handles Page fault for virtual page number vpn
 // 	Allocates physical page for it and copies the
@@ -209,17 +219,18 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
     stats->numPageFaults ++;
     unsigned vpn = virtAddr/PageSize;
     ASSERT(vpn <= numPagesInVM);
-    ASSERT(numPagesAllocated + 1 <= NumPhysPages);
     unsigned offset, pageFrame, i;
 
     unsigned startVirtAddr = PageSize * vpn;
     unsigned endVirtAddr = startVirtAddr + PageSize;
 
+    unsigned newPhysPage = GetNextPageToWrite();
+
     // Modify the contents of Page Table Entry for Virtual Page vpn
-    NachOSpageTable[vpn].physicalPage = numPagesAllocated;
+    NachOSpageTable[vpn].physicalPage = newPhysPage;
     NachOSpageTable[vpn].valid = TRUE;
 
-    bzero(&(machine->mainMemory[numPagesAllocated*PageSize]), PageSize);
+    bzero(&(machine->mainMemory[newPhysPage*PageSize]), PageSize);
 
     unsigned start = max(startVirtAddr, noffH.code.virtualAddr);
     unsigned end = min(endVirtAddr, noffH.code.virtualAddr+noffH.code.size);
@@ -227,7 +238,7 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
     // printf("executable: %u\n", (unsigned)executable);
     if (start < end) {
         offset = start - startVirtAddr;
-        pageFrame = numPagesAllocated;
+        pageFrame = newPhysPage;
         // printf("addr reading at: %d %d %d\n", pageFrame*PageSize + offset,
                 // (end-start), noffH.code.inFileAddr + (start - noffH.code.virtualAddr));
         executable->ReadAt(&(machine->mainMemory[pageFrame * PageSize + offset]),
@@ -239,11 +250,10 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
     // printf("[initData] For virtual page: %d, start: %d, end: %d\n", vpn, start, end);
     if (start < end) {
         offset = start - startVirtAddr;
-        pageFrame = numPagesAllocated;
+        pageFrame = newPhysPage;
         executable->ReadAt(&(machine->mainMemory[pageFrame * PageSize + offset]),
         (end - start), noffH.initData.inFileAddr + (start - noffH.initData.virtualAddr));
     }
-    ++ numPagesAllocated;
     currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
 }
 

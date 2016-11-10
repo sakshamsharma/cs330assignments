@@ -31,6 +31,7 @@ TimeSortedWaitQueue *sleepQueueHead;	// Needed to implement system_call_Sleep
 int schedulingAlgo;			// Scheduling algorithm to simulate
 char **batchProcesses;			// Names of batch processes
 int *priority;				// Process priority
+int replacementAlgo;        // Page replacement algo used with -R flag
 
 int cpu_burst_start_time;        // Records the start of current CPU burst
 int completionTimeArray[MAX_THREAD_COUNT];        // Records the completion time of all simulated threads

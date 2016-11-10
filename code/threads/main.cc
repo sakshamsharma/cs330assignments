@@ -97,6 +97,8 @@ main(int argc, char **argv)
         if (!strcmp(*argv, "-z"))               // print copyright
             printf (copyright);
 #ifdef USER_PROGRAM
+        replacementAlgo = 0;
+
         if (!strcmp(*argv, "-A")) {		// read scheduling algorithm
            schedulingAlgo = atoi(*(argv + 1));
            argCount = 2;
@@ -109,6 +111,10 @@ main(int argc, char **argv)
               currentThread->SetPriority(schedPriority+DEFAULT_BASE_PRIORITY);
               currentThread->SetUsage(0);
            }
+        } else if (!strcmp(*argv, "-R")) {
+           replacementAlgo = atoi(*(argv + 1));
+           argCount = 2;
+           ASSERT((replacementAlgo > 0) && (replacementAlgo <= 4));
         } else if (!strcmp(*argv, "-P")) {
             schedPriority = atoi(*(argv + 1));
             argCount = 2;

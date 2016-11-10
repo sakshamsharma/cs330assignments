@@ -34,6 +34,7 @@ class ProcessAddrSpace {
 
     void SaveStateOnSwitch();			// Save/restore address space-specific
     void RestoreStateOnSwitch();		// info on a context switch
+    int GetNextPageToWrite();           // Finds next page to write to
 
     unsigned GetNumPages();
 

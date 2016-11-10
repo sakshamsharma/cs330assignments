@@ -25,6 +25,13 @@
 #define ROUND_ROBIN 		3
 #define UNIX_SCHED		4
 
+// Replacement algorithms
+#define DEFAULT_REPL 0
+#define RANDOM_REPL 1
+#define FIFO_REPL 2
+#define LRU_REPL 3
+#define LRU_CLOCK_REPL 4
+
 #define SCHED_QUANTUM		100		// If not a multiple of timer interval, quantum will overshoot
 
 #define INITIAL_TAU		SystemTick	// Initial guess of the burst is set to the overhead of system activity
@@ -57,6 +64,7 @@ extern bool exitThreadArray[];		// Marks exited threads
 extern int schedulingAlgo;		// Scheduling algorithm to simulate
 extern char **batchProcesses;		// Names of batch executables
 extern int *priority;			// Process priority
+extern int replacementAlgo;        // Page replacement algo used with -R flag
 
 extern int cpu_burst_start_time;	// Records the start of current CPU burst
 extern int completionTimeArray[];	// Records the completion time of all simulated threads
