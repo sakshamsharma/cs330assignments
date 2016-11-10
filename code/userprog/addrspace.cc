@@ -109,7 +109,7 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
     numPagesInVM = parentSpace->GetNumPages();
     executable = parentSpace->getDupExecutable();
     noffH = parentSpace->noffH;
-    unsigned i, numSharedPages = 0, startAddrParent, startAddrChild;
+    unsigned i, numSharedPages = 0, startAddrParent, startAddrChild, newPhysPage;
 
     TranslationEntry* parentPageTable = parentSpace->GetPageTable();
 
@@ -121,6 +121,7 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
 
     unsigned int size = (numPagesInVM - numSharedPages) * PageSize;
     swapMemory = new char[size];
+    bzero(swapMemory, size);
 
     DEBUG('a', "Initializing address space, num pages %d, size %d\n",
                                         numPagesInVM, size);
@@ -131,15 +132,17 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
 
         // If shared memory, then physical page is from parent's address space
         if (!parentPageTable[i].shared) {
+            if (parentPageTable[i].ifUsed && !(parentPageTable[i].valid)) {
+                parentSpace->PageFaultHandler(i);
+            }
             if (parentPageTable[i].valid) {
-                NachOSpageTable[i].physicalPage = numPagesAllocated;
+                newPhysPage = GetNextPageToWrite(i, parentPageTable[i].physicalPage);
+                NachOSpageTable[i].physicalPage = newPhysPage;
                 startAddrParent = parentPageTable[i].physicalPage*PageSize;
-                startAddrChild = numPagesAllocated*PageSize;
+                startAddrChild = newPhysPage*PageSize;
                 // Copy the contents
-                for (int k = 0; k < PageSize; ++ k) {
-                    machine->mainMemory[startAddrChild + k] =
-                        machine->mainMemory[startAddrParent + k];
-                }
+                memcpy(&(machine->mainMemory[startAddrChild]),
+                        &(machine->mainMemory[startAddrParent]), PageSize);
                 ++ numPagesAllocated;
                 NachOSpageTable[i].shared = FALSE;
                 stats->numPageFaults ++;
@@ -187,7 +190,7 @@ int ProcessAddrSpace::AddSharedSpace(int SharedSpaceSize) {
     for (; i < numSharedPages + numPagesInVM; ++ i) {
         NewTranslation[i].ifUsed = TRUE;
         NewTranslation[i].virtualPage = i;
-        NewTranslation[i].physicalPage = GetNextPageToWrite(i);
+        NewTranslation[i].physicalPage = GetNextPageToWrite(i, -1);
         NewTranslation[i].valid = TRUE;
         NewTranslation[i].use = FALSE;
         NewTranslation[i].dirty = FALSE;
@@ -211,7 +214,7 @@ int ProcessAddrSpace::AddSharedSpace(int SharedSpaceSize) {
 // 	Finds next page for page fault handler
 //  and write it to swap array if it was dirty
 //----------------------------------------------------------------------
-int ProcessAddrSpace::GetNextPageToWrite(int vpn) {
+int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
     int foundPage = -1;
     if (numPagesAllocated == NumPhysPages) {
         if (replacementAlgo == NO_REPL) {
@@ -249,7 +252,7 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
     unsigned startVirtAddr = PageSize * vpn;
     unsigned endVirtAddr = startVirtAddr + PageSize;
 
-    unsigned newPhysPage = GetNextPageToWrite(vpn);
+    unsigned newPhysPage = GetNextPageToWrite(vpn, -1);
 
     // Modify the contents of Page Table Entry for Virtual Page vpn
     NachOSpageTable[vpn].physicalPage = newPhysPage;
@@ -282,6 +285,7 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
         }
     } else {
         // Get this from swap memory
+        memcpy(&(machine->mainMemory[vpn*PageSize]), &(swapMemory[vpn*PageSize]), PageSize);
     }
     currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
 }
@@ -312,6 +316,16 @@ OpenFile* ProcessAddrSpace::getDupExecutable() {
 ProcessAddrSpace::~ProcessAddrSpace()
 {
     ASSERT(executable != NULL);
+
+    int physPageNumber;
+    numPagesAllocated -= numPagesInVM;
+    for(int i = 0; i < numPagesInVM; i++) {
+        if (!NachOSpageTable[i].shared) {
+            physPageNumber = NachOSpageTable[i].physicalPage;
+            machine->memoryUsedBy[physPageNumber] = -1;
+            machine->virtualPageNo[physPageNumber] = -1;
+        }
+    }
     delete executable;
     delete [] swapMemory;
     delete NachOSpageTable;

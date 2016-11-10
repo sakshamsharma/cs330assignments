@@ -30,11 +30,13 @@ class ProcessAddrSpace {
     ~ProcessAddrSpace();			// De-allocate an address space
 
     void InitUserCPURegisters();		// Initialize user-level CPU registers,
-					// before jumping to user code
+        					// before jumping to user code
 
     void SaveStateOnSwitch();			// Save/restore address space-specific
     void RestoreStateOnSwitch();		// info on a context switch
-    int GetNextPageToWrite(int vpn);           // Finds next page to write to
+
+    // Finds next page to write to
+    int GetNextPageToWrite(int vpn, int notToReplace);
 
     unsigned GetNumPages();
 
