@@ -1,4 +1,4 @@
-// exception.cc 
+// exception.cc
 //	Entry point into the Nachos kernel from user programs.
 //	There are two kinds of things that can cause control to
 //	transfer back to here from user code:
@@ -9,7 +9,7 @@
 //
 //	exceptions -- The user code does something that the CPU can't handle.
 //	For instance, accessing memory that doesn't exist, arithmetic errors,
-//	etc.  
+//	etc.
 //
 //	Interrupts (which can also cause control to transfer from user
 //	code into the Nachos kernel) are handled elsewhere.
@@ -18,7 +18,7 @@
 // Everything else core dumps.
 //
 // Copyright (c) 1992-1993 The Regents of the University of California.
-// All rights reserved.  See copyright.h for copyright notice and limitation 
+// All rights reserved.  See copyright.h for copyright notice and limitation
 // of liability and disclaimer of warranty provisions.
 
 #include "copyright.h"
@@ -41,12 +41,12 @@
 //		arg3 -- r6
 //		arg4 -- r7
 //
-//	The result of the system call, if any, must be put back into r2. 
+//	The result of the system call, if any, must be put back into r2.
 //
 // And don't forget to increment the pc before returning. (Or else you'll
 // loop making the same system call forever!
 //
-//	"which" is the kind of exception.  The list of possible exceptions 
+//	"which" is the kind of exception.  The list of possible exceptions
 //	are in machine.h.
 //----------------------------------------------------------------------
 static Semaphore *readAvail;
@@ -98,6 +98,7 @@ ExceptionHandler(ExceptionType which)
     int whichChild;		// Used in SYScall_Join
     NachOSThread *child;		// Used by SYScall_Fork
     unsigned sleeptime;		// Used by SYScall_Sleep
+    unsigned virtAddr;          // Used by PageFaultException
 
     if ((which == SyscallException) && (type == SYScall_Halt)) {
         DEBUG('a', "Shutdown, initiated by user program.\n");
@@ -310,6 +311,10 @@ ExceptionHandler(ExceptionType which)
         machine->WriteRegister(PrevPCReg, machine->ReadRegister(PCReg));
         machine->WriteRegister(PCReg, machine->ReadRegister(NextPCReg));
         machine->WriteRegister(NextPCReg, machine->ReadRegister(NextPCReg)+4);
+    } else if ((which == PageFaultException)) {
+        virtAddr = (unsigned)machine->ReadRegister(39);
+        currentThread->space->PageFaultHandler(virtAddr);
+        machine->WriteRegister(2, 0);
     } else {
         printf("Unexpected user mode exception %d %d\n", which, type);
         ASSERT(FALSE);
