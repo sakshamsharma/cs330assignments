@@ -77,6 +77,7 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *execfile)
     // to leave room for the stack
     numPagesInVM = divRoundUp(size, PageSize);
     size = numPagesInVM * PageSize;
+    swapMemory = new char[size];
 
     DEBUG('a', "Initializing address space, num pages %d, size %d\n",
           numPagesInVM, size);
@@ -119,6 +120,7 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
     }
 
     unsigned int size = (numPagesInVM - numSharedPages) * PageSize;
+    swapMemory = new char[size];
 
     DEBUG('a', "Initializing address space, num pages %d, size %d\n",
                                         numPagesInVM, size);
@@ -255,27 +257,31 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
 
     bzero(&(machine->mainMemory[newPhysPage*PageSize]), PageSize);
 
-    unsigned start = max(startVirtAddr, noffH.code.virtualAddr);
-    unsigned end = min(endVirtAddr, noffH.code.virtualAddr+noffH.code.size);
-    // printf("[Code] For virtual page: %d, start: %d, end: %d\n", vpn, start, end);
-    // printf("executable: %u\n", (unsigned)executable);
-    if (start < end) {
-        offset = start - startVirtAddr;
-        pageFrame = newPhysPage;
-        // printf("addr reading at: %d %d %d\n", pageFrame*PageSize + offset,
-                // (end-start), noffH.code.inFileAddr + (start - noffH.code.virtualAddr));
-        executable->ReadAt(&(machine->mainMemory[pageFrame * PageSize + offset]),
-            (end - start), noffH.code.inFileAddr + (start - noffH.code.virtualAddr));
-    }
+    if (!NachOSpageTable[vpn].ifUsed) {
+        unsigned start = max(startVirtAddr, noffH.code.virtualAddr);
+        unsigned end = min(endVirtAddr, noffH.code.virtualAddr+noffH.code.size);
+        // printf("[Code] For virtual page: %d, start: %d, end: %d\n", vpn, start, end);
+        // printf("executable: %u\n", (unsigned)executable);
+        if (start < end) {
+            offset = start - startVirtAddr;
+            pageFrame = newPhysPage;
+            // printf("addr reading at: %d %d %d\n", pageFrame*PageSize + offset,
+            // (end-start), noffH.code.inFileAddr + (start - noffH.code.virtualAddr));
+            executable->ReadAt(&(machine->mainMemory[pageFrame * PageSize + offset]),
+                               (end - start), noffH.code.inFileAddr + (start - noffH.code.virtualAddr));
+        }
 
-    start = max(startVirtAddr, noffH.initData.virtualAddr);
-    end = min(endVirtAddr, noffH.initData.virtualAddr+noffH.initData.size);
-    // printf("[initData] For virtual page: %d, start: %d, end: %d\n", vpn, start, end);
-    if (start < end) {
-        offset = start - startVirtAddr;
-        pageFrame = newPhysPage;
-        executable->ReadAt(&(machine->mainMemory[pageFrame * PageSize + offset]),
-        (end - start), noffH.initData.inFileAddr + (start - noffH.initData.virtualAddr));
+        start = max(startVirtAddr, noffH.initData.virtualAddr);
+        end = min(endVirtAddr, noffH.initData.virtualAddr+noffH.initData.size);
+        // printf("[initData] For virtual page: %d, start: %d, end: %d\n", vpn, start, end);
+        if (start < end) {
+            offset = start - startVirtAddr;
+            pageFrame = newPhysPage;
+            executable->ReadAt(&(machine->mainMemory[pageFrame * PageSize + offset]),
+                               (end - start), noffH.initData.inFileAddr + (start - noffH.initData.virtualAddr));
+        }
+    } else {
+        // Get this from swap memory
     }
     currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
 }
@@ -307,6 +313,7 @@ ProcessAddrSpace::~ProcessAddrSpace()
 {
     ASSERT(executable != NULL);
     delete executable;
+    delete [] swapMemory;
     delete NachOSpageTable;
 }
 

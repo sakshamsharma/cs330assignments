@@ -45,7 +45,9 @@ class ProcessAddrSpace {
 
     void PageFaultHandler(unsigned vpn);        // Allocates Physical Page for virtual
                                                 // page number vpn
-    OpenFile* getDupExecutable();               // Returns a duplicate executable file
+    OpenFile* getDupExecutable();               // Returns a duplicate
+                                                // executable file
+    char *swapMemory;
                                                 // used while forking
     NoffHeader noffH;                           // stores the noffHeader data
   private:
