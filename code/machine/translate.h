@@ -42,6 +42,7 @@ class TranslationEntry {
 			// page is modified.
     bool shared;        // This bit is set if the page is shared
 
+    bool ifUsed;     // If it has been loaded before
 };
 
 #endif

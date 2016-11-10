@@ -26,7 +26,7 @@
 #define UNIX_SCHED		4
 
 // Replacement algorithms
-#define DEFAULT_REPL 0
+#define NO_REPL 0
 #define RANDOM_REPL 1
 #define FIFO_REPL 2
 #define LRU_REPL 3

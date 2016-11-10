@@ -159,7 +159,12 @@ class Machine {
 
     char *mainMemory;		// physical memory to store user program,
 				// code and data, while executing
- 
+    int *memoryUsedBy;          // Stores index of thread in
+                                // threadArray which is using this
+                                // memory location
+    int *virtualPageNo;         // vpn of this physical page in the
+                                // virtual memory of PID
+
     int registers[NumTotalRegs]; // CPU registers, for executing user programs
 
 

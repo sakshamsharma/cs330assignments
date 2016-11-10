@@ -59,8 +59,17 @@ Machine::Machine(bool debug)
     for (i = 0; i < NumTotalRegs; i++)
         registers[i] = 0;
     mainMemory = new char[MemorySize];
+
+    memoryUsedBy = new int[NumPhysPages];
+    virtualPageNo = new int[NumPhysPages];
+
     for (i = 0; i < MemorySize; i++)
-      	mainMemory[i] = 0;
+        mainMemory[i] = 0;
+
+    for (i=0; i<NumPhysPages; i++) {
+        memoryUsedBy[i] = -1;
+        virtualPageNo[i] = -1;
+    }
 
 #ifdef USE_TLB
     tlb = new TranslationEntry[TLBSize];
@@ -84,6 +93,8 @@ Machine::Machine(bool debug)
 Machine::~Machine()
 {
     delete [] mainMemory;
+    delete [] memoryUsedBy;
+    delete [] virtualPageNo;
     if (tlb != NULL)
         delete [] tlb;
 }

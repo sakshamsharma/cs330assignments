@@ -73,24 +73,27 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *execfile)
 
     // how big is address space?
     size = noffH.code.size + noffH.initData.size + noffH.uninitData.size
-			+ UserStackSize;	// we need to increase the size
-						// to leave room for the stack
+        + UserStackSize;	// we need to increase the size
+    // to leave room for the stack
     numPagesInVM = divRoundUp(size, PageSize);
     size = numPagesInVM * PageSize;
 
     DEBUG('a', "Initializing address space, num pages %d, size %d\n",
-					numPagesInVM, size);
+          numPagesInVM, size);
     // first, set up the translation
     NachOSpageTable = new TranslationEntry[numPagesInVM];
     for (i = 0; i < numPagesInVM; i++) {
-	NachOSpageTable[i].virtualPage = i;
-	NachOSpageTable[i].valid = FALSE;
-	NachOSpageTable[i].use = FALSE;
-	NachOSpageTable[i].dirty = FALSE;
+        NachOSpageTable[i].virtualPage = i;
+        NachOSpageTable[i].valid = FALSE;
+        NachOSpageTable[i].use = FALSE;
+        NachOSpageTable[i].dirty = FALSE;
         NachOSpageTable[i].shared = FALSE;
-        NachOSpageTable[i].readOnly = FALSE;  // if the code segment was entirely on
-					// a separate page, we could set its
-					// pages to be read-only
+        NachOSpageTable[i].ifUsed = FALSE;
+
+        // if the code segment was entirely on
+        // a separate page, we could set its
+        // pages to be read-only
+        NachOSpageTable[i].readOnly = FALSE;
     }
 
 }
@@ -145,6 +148,7 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
             NachOSpageTable[i].shared = TRUE;
             stats->numPageFaults ++;
         }
+        NachOSpageTable[i].ifUsed = parentPageTable[i].ifUsed;
         NachOSpageTable[i].valid = parentPageTable[i].valid;
         NachOSpageTable[i].use = parentPageTable[i].use;
         NachOSpageTable[i].dirty = parentPageTable[i].dirty;
@@ -174,15 +178,17 @@ int ProcessAddrSpace::AddSharedSpace(int SharedSpaceSize) {
         NewTranslation[i].use = NachOSpageTable[i].use;
         NewTranslation[i].dirty = NachOSpageTable[i].dirty;
         NewTranslation[i].readOnly = NachOSpageTable[i].readOnly;
+        NewTranslation[i].ifUsed = NachOSpageTable[i].ifUsed;
     }
 
 
     for (; i < numSharedPages + numPagesInVM; ++ i) {
-	NewTranslation[i].virtualPage = i;
-	NewTranslation[i].physicalPage = i + numPagesAllocated;
-	NewTranslation[i].valid = TRUE;
-	NewTranslation[i].use = FALSE;
-	NewTranslation[i].dirty = FALSE;
+        NewTranslation[i].ifUsed = TRUE;
+        NewTranslation[i].virtualPage = i;
+        NewTranslation[i].physicalPage = GetNextPageToWrite(i);
+        NewTranslation[i].valid = TRUE;
+        NewTranslation[i].use = FALSE;
+        NewTranslation[i].dirty = FALSE;
         NewTranslation[i].shared = TRUE;
         NewTranslation[i].readOnly = FALSE;
     }
@@ -203,9 +209,26 @@ int ProcessAddrSpace::AddSharedSpace(int SharedSpaceSize) {
 // 	Finds next page for page fault handler
 //  and write it to swap array if it was dirty
 //----------------------------------------------------------------------
-int ProcessAddrSpace::GetNextPageToWrite() {
-    ASSERT(numPagesAllocated + 1 <= NumPhysPages);
-    return numPagesAllocated++;
+int ProcessAddrSpace::GetNextPageToWrite(int vpn) {
+    int foundPage = -1;
+    if (numPagesAllocated == NumPhysPages) {
+        if (replacementAlgo == NO_REPL) {
+            ASSERT(false);
+        }
+        // Implement remaining algorithms here
+        // Find a page to replace
+    } else {
+        if (replacementAlgo == NO_REPL) {
+            foundPage = numPagesAllocated++;
+        } else {
+            // Iterate over physical address to
+            // find an unused address
+        }
+    }
+
+    machine->memoryUsedBy[foundPage] = currentThread->GetPID();
+    machine->virtualPageNo[foundPage] = vpn;
+    return foundPage;
 }
 
 //----------------------------------------------------------------------
@@ -224,7 +247,7 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
     unsigned startVirtAddr = PageSize * vpn;
     unsigned endVirtAddr = startVirtAddr + PageSize;
 
-    unsigned newPhysPage = GetNextPageToWrite();
+    unsigned newPhysPage = GetNextPageToWrite(vpn);
 
     // Modify the contents of Page Table Entry for Virtual Page vpn
     NachOSpageTable[vpn].physicalPage = newPhysPage;
