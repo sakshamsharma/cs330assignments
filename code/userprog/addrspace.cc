@@ -85,6 +85,7 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *execfile)
     NachOSpageTable = new TranslationEntry[numPagesInVM];
     for (i = 0; i < numPagesInVM; i++) {
         NachOSpageTable[i].virtualPage = i;
+        NachOSpageTable[i].physicalPage = -1;
         NachOSpageTable[i].valid = FALSE;
         NachOSpageTable[i].use = FALSE;
         NachOSpageTable[i].dirty = FALSE;
@@ -96,7 +97,6 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *execfile)
         // pages to be read-only
         NachOSpageTable[i].readOnly = FALSE;
     }
-
 }
 
 //----------------------------------------------------------------------
@@ -180,8 +180,6 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
 
 int ProcessAddrSpace::AddSharedSpace(int SharedSpaceSize) {
     unsigned int i, numSharedPages = divRoundUp(SharedSpaceSize, PageSize);
-
-    ASSERT(numSharedPages + numPagesAllocated <= NumPhysPages);
     TranslationEntry* NewTranslation = new TranslationEntry[numPagesInVM + numSharedPages];
 
     for (i = 0; i < numPagesInVM; ++ i) {
@@ -209,10 +207,6 @@ int ProcessAddrSpace::AddSharedSpace(int SharedSpaceSize) {
         NewTranslation[i].ifUsed = TRUE;
     }
 
-
-    // This has been done by GetNextPage in loop
-    // numPagesAllocated += numSharedPages;
-
     numPagesInVM += numSharedPages;
 
     delete NachOSpageTable;
@@ -232,17 +226,15 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
     if (replacementAlgo == NO_REPL) {
         // If all pages have been allocated,
         // we cannot proceed
-        ASSERT(lastPageAllocated < NumPhysPages);
+        ASSERT(numPagesAllocated < NumPhysPages);
     }
 
-    if (numPagesAllocated == NumPhysPages) {
+    if (usedPages == NumPhysPages) {
         // Implement remaining algorithms here
         // Find a page to replace
     } else {
         if (replacementAlgo == NO_REPL) {
-            // This cannot work with numPagesAllocated
-            // Since that is decremented on exit of threads
-            foundPage = lastPageAllocated++;
+            foundPage = numPagesAllocated++;
         } else {
             // Iterate over physical address to
             // find an unused address
@@ -252,8 +244,11 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
                     break;
                 }
             }
-            numPagesAllocated++;
         }
+
+        // Since inside this 'else' block, we always use up
+        // a new page:
+        usedPages++;
     }
 
     machine->memoryUsedBy[foundPage] = currentThread->GetPID();
@@ -271,6 +266,7 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
 //----------------------------------------------------------------------
 
 void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
+    printf("[%d] Page fault for %d\n", currentThread->GetPID(), virtAddr);
 
     stats->numPageFaults ++;
 
@@ -352,11 +348,7 @@ ProcessAddrSpace::~ProcessAddrSpace()
             physPageNumber = NachOSpageTable[i].physicalPage;
             machine->memoryUsedBy[physPageNumber] = -1;
             machine->virtualPageNo[physPageNumber] = -1;
-
-            // Also decrement this count
-            // This cannot be decremented all together
-            // Since we cannot subtract shared pages
-            numPagesAllocated--;
+            usedPages--;
         }
     }
     delete executable;

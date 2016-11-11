@@ -19,9 +19,8 @@ Statistics *stats;			// performance metrics
 Timer *timer;				// the hardware timer device,
 					// for invoking context switches
 
-unsigned numPagesAllocated;              // number of physical frames
-                                         // allocated
-unsigned lastPageAllocated;              // Only useful for NO_REPL replacer
+unsigned numPagesAllocated; // Only useful for NO_REPL
+unsigned usedPages; // Simply counts the currently used up pages
 
 NachOSThread *threadArray[MAX_THREAD_COUNT];  // Array of thread pointers
 unsigned thread_index;			// Index into this array (also used to assign unique pid)
@@ -118,7 +117,7 @@ Initialize(int argc, char **argv)
 
     initializedConsoleSemaphores = false;
     numPagesAllocated = 0;
-    lastPageAllocated = 0;
+    usedPages = 0;
 
     schedulingAlgo = NON_PREEMPTIVE_BASE;	// Default
 
