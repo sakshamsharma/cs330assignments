@@ -148,14 +148,20 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace, int _pid)
 void ProcessAddrSpace::CopyParentAddrSpace(ProcessAddrSpace *parentSpace) {
     unsigned startAddrParent, startAddrChild, newPhysPage;
 
+    TranslationEntry* parentPageTable = parentSpace->GetPageTable();
+    memcpy(swapMemory, parentSpace->swapMemory, numPagesInVM*PageSize);
+
     for (int i = 0; i < numPagesInVM; i++) {
+        NachOSpageTable[i].ifUsed = parentPageTable[i].ifUsed;
+        NachOSpageTable[i].valid = parentPageTable[i].valid;
+
         TranslationEntry* parentPageTable = parentSpace->GetPageTable();
         // If shared memory, then physical page is from parent's address space
         if (!parentPageTable[i].shared) {
 
-            if (parentPageTable[i].ifUsed && !(parentPageTable[i].valid)) {
-                parentSpace->PageFaultHandler(i);
-            }
+            // if (parentPageTable[i].ifUsed && !(parentPageTable[i].valid)) {
+            //     parentSpace->PageFaultHandler(i);
+            // }
 
             if (parentPageTable[i].valid) {
                 // Get new page, but do not overwrite parent's page
@@ -177,10 +183,11 @@ void ProcessAddrSpace::CopyParentAddrSpace(ProcessAddrSpace *parentSpace) {
             stats->numPageFaults ++;
         }
 
-        if (NachOSpageTable[i].valid && !(NachOSpageTable[i].shared)) {
-            currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
-        }
+        // if (NachOSpageTable[i].valid && !(NachOSpageTable[i].shared)) {
+        //     currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
+        // }
     }
+    printf("Parent is finished\n");
 }
 
 //----------------------------------------------------------------------
@@ -361,20 +368,23 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
         unsigned start = max(startVirtAddr, noffH.code.virtualAddr);
         unsigned end = min(endVirtAddr, noffH.code.virtualAddr+noffH.code.size);
 
-        if (start < end) {
-            offset = start - startVirtAddr;
-            executable->ReadAt(&(machine->mainMemory[newPhysPage * PageSize + offset]),
-                               (end - start), noffH.code.inFileAddr + (start - noffH.code.virtualAddr));
-        }
+        executable->ReadAt(&(machine->mainMemory[newPhysPage * PageSize]),
+                           PageSize, noffH.code.inFileAddr + vpn*PageSize);
 
-        start = max(startVirtAddr, noffH.initData.virtualAddr);
-        end = min(endVirtAddr, noffH.initData.virtualAddr+noffH.initData.size);
+        // if (start < end) {
+        //     offset = start - startVirtAddr;
+        //     executable->ReadAt(&(machine->mainMemory[newPhysPage * PageSize + offset]),
+        //                        (end - start), noffH.code.inFileAddr + (start - noffH.code.virtualAddr));
+        // }
 
-        if (start < end) {
-            offset = start - startVirtAddr;
-            executable->ReadAt(&(machine->mainMemory[newPhysPage * PageSize + offset]),
-                               (end - start), noffH.initData.inFileAddr + (start - noffH.initData.virtualAddr));
-        }
+        // start = max(startVirtAddr, noffH.initData.virtualAddr);
+        // end = min(endVirtAddr, noffH.initData.virtualAddr+noffH.initData.size);
+
+        // if (start < end) {
+        //     offset = start - startVirtAddr;
+        //     executable->ReadAt(&(machine->mainMemory[newPhysPage * PageSize + offset]),
+        //                        (end - start), noffH.initData.inFileAddr + (start - noffH.initData.virtualAddr));
+        // }
 
         printf("[%d] Used first time vpn:%d at phys: %d\n", pid, vpn, newPhysPage);
     } else {
@@ -406,6 +416,7 @@ void ProcessAddrSpace::SaveToSwap(int vpn) {
     fflush(stdout);
 
     // Physical Page should Exist
+    printf("%d\n", NachOSpageTable[vpn].physicalPage);
     ASSERT(NachOSpageTable[vpn].valid);
 
     // If page is dirty, save it to swap
