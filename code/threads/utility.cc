@@ -73,3 +73,16 @@ DEBUG(char flag, char *format, ...)
 	fflush(stdout);
     }
 }
+
+// Copies the file name into a place on the heap
+char* copyFileName(char *name) {
+    int len = 0, i;
+    while (name[len] != 0) {
+        len++;
+    }
+    char *newSpace = new char[len+1];
+    for(i=0; i<=len; i++) {
+        newSpace[i] = name[i];
+    }
+    return newSpace;
+}
