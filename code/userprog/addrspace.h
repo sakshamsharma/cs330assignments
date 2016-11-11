@@ -21,9 +21,10 @@
 
 class ProcessAddrSpace {
   public:
-    ProcessAddrSpace(OpenFile *threadexecutable);	// Create an address space,
-					// initializing it with the program
-					// stored in the file "executable"
+    // Create an address space,
+    // initializing it with the program
+    // stored in the file "executable"
+    ProcessAddrSpace(OpenFile *threadexecutable, char *filename);
 
     ProcessAddrSpace (ProcessAddrSpace *parentSpace);	// Used by fork
 
@@ -47,8 +48,10 @@ class ProcessAddrSpace {
 
     void PageFaultHandler(unsigned vpn);        // Allocates Physical Page for virtual
                                                 // page number vpn
-    OpenFile* getDupExecutable();               // Returns a duplicate
-                                                // executable file
+
+    char *fileName;                     // Store a pointer to the executable
+                                        // our program is stored in
+
     char *swapMemory;
                                                 // used while forking
     NoffHeader noffH;                           // stores the noffHeader data
@@ -57,8 +60,6 @@ class ProcessAddrSpace {
 					// for now!
     unsigned int numPagesInVM;		// Number of pages in the virtual
 					// address space
-    OpenFile *executable;               // Store a pointer to the executable
-                                        // our program is stored in
 };
 
 #endif // ADDRSPACE_H

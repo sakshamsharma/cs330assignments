@@ -57,15 +57,16 @@ SwapHeader (NoffHeader *noffH)
 //	"executable" is the file containing the object code to load into memory
 //----------------------------------------------------------------------
 
-ProcessAddrSpace::ProcessAddrSpace(OpenFile *execfile)
+ProcessAddrSpace::ProcessAddrSpace(OpenFile *execfile, char *programname)
 {
     unsigned int i, size;
     unsigned vpn, offset;
     TranslationEntry *entry;
     unsigned int pageFrame;
 
-    executable = execfile;
-    executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
+    fileName = copyFileName(programname);
+
+    execfile->ReadAt((char *)&noffH, sizeof(noffH), 0);
     if ((noffH.noffMagic != NOFFMAGIC) &&
 		(WordToHost(noffH.noffMagic) == NOFFMAGIC))
     	SwapHeader(&noffH);
@@ -107,9 +108,10 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *execfile)
 ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
 {
     numPagesInVM = parentSpace->GetNumPages();
-    executable = parentSpace->getDupExecutable();
     noffH = parentSpace->noffH;
     unsigned i, numSharedPages = 0, startAddrParent, startAddrChild, newPhysPage;
+
+    fileName = copyFileName(parentSpace->fileName);
 
     TranslationEntry* parentPageTable = parentSpace->GetPageTable();
 
@@ -198,13 +200,14 @@ int ProcessAddrSpace::AddSharedSpace(int SharedSpaceSize) {
         NewTranslation[i].virtualPage = i;
         NewTranslation[i].physicalPage = GetNextPageToWrite(i, -1);
         bzero(&machine->mainMemory[(NewTranslation[i].physicalPage)*PageSize], PageSize);
-
         NewTranslation[i].shared = TRUE;
         NewTranslation[i].valid = TRUE;
         NewTranslation[i].use = FALSE;
         NewTranslation[i].dirty = FALSE;
         NewTranslation[i].readOnly = FALSE;
         NewTranslation[i].ifUsed = TRUE;
+
+        printf("Sharing phys at vpn %d: %d\n", NewTranslation[i].physicalPage, i);
     }
 
     numPagesInVM += numSharedPages;
@@ -285,6 +288,8 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
 
     bzero(&(machine->mainMemory[newPhysPage*PageSize]), PageSize);
 
+    OpenFile *executable = fileSystem->Open(fileName);
+
     if (!NachOSpageTable[vpn].ifUsed) {
         unsigned start = max(startVirtAddr, noffH.code.virtualAddr);
         unsigned end = min(endVirtAddr, noffH.code.virtualAddr+noffH.code.size);
@@ -308,30 +313,18 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
             executable->ReadAt(&(machine->mainMemory[pageFrame * PageSize + offset]),
                                (end - start), noffH.initData.inFileAddr + (start - noffH.initData.virtualAddr));
         }
+
+        // TODO: Check this
+        NachOSpageTable[vpn].ifUsed = 1;
     } else {
         // Get this from swap memory
         memcpy(&(machine->mainMemory[newPhysPage*PageSize]), &(swapMemory[vpn*PageSize]), PageSize);
     }
+
+    delete executable;
+
     currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
 }
-
-//----------------------------------------------------------------------
-// ProcessAddrSpace::getDupExecutable
-//          Creates a Duplicate Executable file of executable of
-//          this thread. Used While Forking by the new thread to get
-//          an executable for the corresponding field in
-//          in its ProcessAddrSpace
-//----------------------------------------------------------------------
-
-OpenFile* ProcessAddrSpace::getDupExecutable() {
-    int fileDes;
-#ifdef FILESYS_STUB
-    fileDes = executable->GetFD();
-#endif
-    OpenFile *duplicate = new OpenFile(fileDes);
-    return duplicate;
-}
-
 
 //----------------------------------------------------------------------
 // ProcessAddrSpace::~ProcessAddrSpace
@@ -340,8 +333,6 @@ OpenFile* ProcessAddrSpace::getDupExecutable() {
 
 ProcessAddrSpace::~ProcessAddrSpace()
 {
-    ASSERT(executable != NULL);
-
     int physPageNumber;
     for(int i = 0; i < numPagesInVM; i++) {
         if (!NachOSpageTable[i].shared) {
@@ -351,7 +342,7 @@ ProcessAddrSpace::~ProcessAddrSpace()
             usedPages--;
         }
     }
-    delete executable;
+    delete fileName;
     delete [] swapMemory;
     delete NachOSpageTable;
 }
