@@ -183,9 +183,9 @@ void ProcessAddrSpace::CopyParentAddrSpace(ProcessAddrSpace *parentSpace) {
             stats->numPageFaults ++;
         }
 
-        // if (NachOSpageTable[i].valid && !(NachOSpageTable[i].shared)) {
-        //     currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
-        // }
+        if (NachOSpageTable[i].valid && !(NachOSpageTable[i].shared)) {
+            currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
+        }
     }
     printf("Parent is finished\n");
 }
@@ -431,7 +431,7 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
 
 void ProcessAddrSpace::SaveToSwap(int vpn) {
     printf("[%d] Saving vpn:%d, phys:%d to swap\n",
-           pid, NachOSpageTable[vpn].physicalPage, vpn);
+           pid, vpn, NachOSpageTable[vpn].physicalPage);
     fflush(stdout);
 
     // Physical Page should Exist
