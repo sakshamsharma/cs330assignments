@@ -249,7 +249,7 @@ bool ProcessAddrSpace::isVpnShared(int vpn) {
 //----------------------------------------------------------------------
 int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
     int i, foundPage = -1;
-    int* tmp;
+    int* tmp, *tmp2 = NULL;
     long long int val = (1LL)<<60 -1;
     if (replacementAlgo == NO_REPL) {
         // If all pages have been allocated,
@@ -299,7 +299,10 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
             case LRU_REPL:
                 printf("Entering lru replacement algorithm\n");
 
-                machine->LRUTimeStamp[notToReplace] = stats->totalTicks-1;
+                if(notToReplace != -1) {
+                    machine->LRUTimeStamp[notToReplace] = stats->totalTicks-1;
+                }
+
                 for(i = 0; i<NumPhysPages; i++){
                     if( machine->LRUTimeStamp[i] < val  && machine->isShared[i] == FALSE  && i != notToReplace ){
                         foundPage = i;
@@ -314,18 +317,27 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
             case FIFO_REPL:
                 printf("Entering FIFO replacement algorithm\n");
 
-                while( TRUE ) {
-                    tmp = (int *)FIFOQueue->Remove();
-                    foundPage = *tmp;
-                    if (machine->memoryUsedBy[foundPage] == -1 || machine->isShared[i]) {
-                        delete tmp;
-                    } else {
-                        break;
+                tmp = (int *)FIFOQueue->Remove();
+                foundPage = *tmp;
+                while (foundPage == notToReplace || machine->isShared[foundPage]) {
+                    if (foundPage == notToReplace) {
+                        tmp2 = tmp;
+                        tmp = (int *)FIFOQueue->Remove();
+                        foundPage = *tmp;
                     }
+                    if(machine->isShared[foundPage]) {
+                        delete tmp;
+                        tmp = (int *)FIFOQueue->Remove();
+                        foundPage = *tmp;
+                    }
+                }
+                if (tmp2) {
+                    FIFOQueue->Prepend((void *)tmp2);
                 }
 
                 ASSERT(foundPage != -1);
                 FIFOQueue->Append((void *)tmp);
+                printf("FoundPage is %d\n", foundPage);
                 break;
         }
 
