@@ -142,7 +142,7 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *_executable)
 ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
 {
     numPagesInVM = parentSpace->GetNumPages();
-    unsigned i, j, numSharedPages = 0;
+    unsigned i, numSharedPages = 0;
 
     TranslationEntry* parentPageTable = parentSpace->GetPageTable();
 
@@ -168,24 +168,23 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
     unsigned thisPage;
 
     NachOSpageTable = new TranslationEntry[numPagesInVM];
-    for (i = 0, j = 0; i < numPagesInVM; i++) {
+    for (i = 0; i < numPagesInVM; i++) {
         NachOSpageTable[i].virtualPage = i;
 
         // If shared memory, then physical page is from parent's address space
         if (!parentPageTable[i].shared) {
             thisPage = GetNewPage();
             NachOSpageTable[i].physicalPage = thisPage;
+
             // Copy the contents
-            for (int k = 0; k < PageSize; ++ k) {
-                machine->mainMemory[(thisPage * PageSize) + k] = 
-                        machine->mainMemory[startAddrParent + (j * PageSize) + k];
-            }
-            ++ j;
-            NachOSpageTable[i].shared = FALSE;
+            memcpy(machine->mainMemory + thisPage*PageSize,
+                   machine->mainMemory + parentPageTable[i].physicalPage*PageSize,
+                   PageSize);
         } else {
             NachOSpageTable[i].physicalPage = parentPageTable[i].physicalPage;
-            NachOSpageTable[i].shared = TRUE;
         }
+
+        NachOSpageTable[i].shared = parentPageTable[i].shared;
         NachOSpageTable[i].valid = parentPageTable[i].valid;
         NachOSpageTable[i].use = parentPageTable[i].use;
         NachOSpageTable[i].dirty = parentPageTable[i].dirty;
