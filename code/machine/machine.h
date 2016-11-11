@@ -33,7 +33,7 @@
 					// simplicity
 
 //#define NumPhysPages    32
-#define NumPhysPages    8
+#define NumPhysPages    15
 #define MemorySize 	(NumPhysPages * PageSize)
 #define TLBSize		4		// if there is a TLB, make it small
 
@@ -166,6 +166,7 @@ class Machine {
                                 // virtual memory of PID
     bool *referenceBit;         // reference bit, used by page replacement
                                 // algorithm: LRU_CLOCK_REPL
+    bool *isShared;             // Is this physpage marked as shared?
 
     int registers[NumTotalRegs]; // CPU registers, for executing user programs
 

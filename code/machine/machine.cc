@@ -63,6 +63,7 @@ Machine::Machine(bool debug)
     memoryUsedBy = new int[NumPhysPages];
     virtualPageNo = new int[NumPhysPages];
     referenceBit = new bool[NumPhysPages];
+    isShared = new bool[NumPhysPages];
 
     for (i = 0; i < MemorySize; i++)
         mainMemory[i] = 0;
@@ -71,6 +72,7 @@ Machine::Machine(bool debug)
         memoryUsedBy[i] = -1;
         virtualPageNo[i] = -1;
         referenceBit[i] = 0;
+        isShared[i] = 0;
     }
 
 #ifdef USE_TLB
@@ -97,6 +99,8 @@ Machine::~Machine()
     delete [] mainMemory;
     delete [] memoryUsedBy;
     delete [] virtualPageNo;
+    delete [] isShared;
+    delete [] referenceBit;
     if (tlb != NULL)
         delete [] tlb;
 }

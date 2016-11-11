@@ -216,6 +216,8 @@ int ProcessAddrSpace::AddSharedSpace(int SharedSpaceSize) {
         NewTranslation[i].readOnly = FALSE;
         NewTranslation[i].ifUsed = TRUE;
 
+        machine->isShared[NewTranslation[i].physicalPage] = 1;
+
         printf("Sharing phys at vpn %d: %d\n", NewTranslation[i].physicalPage, i);
     }
 
@@ -243,7 +245,10 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
     if (replacementAlgo == NO_REPL) {
         // If all pages have been allocated,
         // we cannot proceed
-        ASSERT(numPagesAllocated < NumPhysPages);
+        if(numPagesAllocated >= NumPhysPages) {
+            printf("%d %d\n", numPagesAllocated, NumPhysPages);
+            ASSERT(false);
+        }
     }
 
     printf("[%d] wants a page for vpn %d\n", pid, vpn);
@@ -253,8 +258,8 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
                 printf("Entering random replacement algorithm\n");
                 foundPage = Random()%(NumPhysPages);
 
-                // If this is a shared page
-                while (threadArray[machine->memoryUsedBy[foundPage]]->space->isVpnShared(machine->virtualPageNo[foundPage]) ||
+                // If this is a shared page or not to be replaced, loop
+                while (machine->isShared[foundPage] ||
                        foundPage == notToReplace) {
                     foundPage = Random()%(NumPhysPages);
                 };
@@ -275,7 +280,7 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
 
                     // If this is the page being copied, cannot replace it
                     // If this is a shared page, cannot replace it
-                    while (threadArray[machine->memoryUsedBy[LRU_Clock_ptr]]->space->isVpnShared(machine->virtualPageNo[LRU_Clock_ptr]) ||
+                    while (machine->isShared[LRU_Clock_ptr] ||
                            LRU_Clock_ptr == notToReplace) {
                         machine->referenceBit[LRU_Clock_ptr] = 0;
                         LRU_Clock_ptr = (LRU_Clock_ptr+1)%NumPhysPages;
@@ -430,7 +435,7 @@ ProcessAddrSpace::~ProcessAddrSpace()
 {
     int physPageNumber;
     for(int i = 0; i < numPagesInVM; i++) {
-        if (!NachOSpageTable[i].shared) {
+        if (!NachOSpageTable[i].shared && NachOSpageTable[i].valid) {
             physPageNumber = NachOSpageTable[i].physicalPage;
             machine->memoryUsedBy[physPageNumber] = -1;
             machine->virtualPageNo[physPageNumber] = -1;
