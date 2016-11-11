@@ -273,18 +273,14 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
 
             case LRU_CLOCK_REPL:
                 printf("Entering clock lru replacement algorithm\n");
-                while(machine->referenceBit[LRU_Clock_ptr]) {
+
+                while(machine->referenceBit[LRU_Clock_ptr] ||
+                      machine->isShared[LRU_Clock_ptr] ||
+                      LRU_Clock_ptr == notToReplace) {
+
                     printf("Ptr: %d, bit %d\n", LRU_Clock_ptr, machine->referenceBit[LRU_Clock_ptr]);
                     machine->referenceBit[LRU_Clock_ptr] = 0;
                     LRU_Clock_ptr = (LRU_Clock_ptr+1)%NumPhysPages;
-
-                    // If this is the page being copied, cannot replace it
-                    // If this is a shared page, cannot replace it
-                    while (machine->isShared[LRU_Clock_ptr] ||
-                           LRU_Clock_ptr == notToReplace) {
-                        machine->referenceBit[LRU_Clock_ptr] = 0;
-                        LRU_Clock_ptr = (LRU_Clock_ptr+1)%NumPhysPages;
-                    };
                 }
 
                 foundPage = LRU_Clock_ptr;
@@ -293,6 +289,7 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
                 machine->referenceBit[foundPage]=TRUE;
 
                 // Swap out the replaced page
+                // if the process owner exists
                 if(machine->memoryUsedBy[foundPage] != -1) {
                     threadArray[machine->memoryUsedBy[foundPage]]->space->SaveToSwap(machine->virtualPageNo[foundPage]);
                 }
@@ -395,6 +392,8 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
     printf("[%d] Returned from getnextpagetowrite\n", pid);
     currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
     printf("[%d] Returned from sleep\n", pid);
+    printf("Was faulting on %d\n", vpn);
+    printf("It is now at %d\n", NachOSpageTable[vpn].physicalPage);
 }
 
 
