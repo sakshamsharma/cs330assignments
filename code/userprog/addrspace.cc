@@ -313,6 +313,7 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
         // Swap this page if needed, that is, if this space is owned
         // by someone
         if (machine->memoryUsedBy[foundPage] != -1) {
+            printf("[%d] Swapping %d owned by %d!!!\n", pid, foundPage, machine->memoryUsedBy[foundPage]);
             threadArray[machine->memoryUsedBy[foundPage]]->space->SaveToSwap(machine->virtualPageNo[foundPage]);
             printf("Swapped phys page %d!\n", foundPage);
         }
@@ -436,13 +437,10 @@ void ProcessAddrSpace::SaveToSwap(int vpn) {
     // Physical Page should Exist
     ASSERT(NachOSpageTable[vpn].valid);
 
-    // If page is dirty, save it to swap
-    if (NachOSpageTable[vpn].dirty) {
-        unsigned pageFrame = NachOSpageTable[vpn].physicalPage;
-        memcpy(&(swapMemory[vpn*PageSize]), &(machine->mainMemory[pageFrame*PageSize]),
-                PageSize);
-        NachOSpageTable[vpn].dirty = FALSE;
-    }
+    unsigned pageFrame = NachOSpageTable[vpn].physicalPage;
+    memcpy(&(swapMemory[vpn*PageSize]), &(machine->mainMemory[pageFrame*PageSize]),
+           PageSize);
+    NachOSpageTable[vpn].dirty = FALSE;
 
     // Set Translation Entry's variables
     NachOSpageTable[vpn].physicalPage = -1;

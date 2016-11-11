@@ -285,6 +285,20 @@ NachOSThread::Exit (bool terminateSim, int exitcode)
        else interrupt->Idle();      // no one to run, wait for an interrupt
        nextThread = scheduler->FindNextThreadToRun();
     }
+
+    TranslationEntry *NachOSpageTable = space->GetPageTable();
+    unsigned numPagesInVM = space->GetNumPages();
+
+    int physPageNumber;
+    for(int i = 0; i < numPagesInVM; i++) {
+        if (!NachOSpageTable[i].shared && NachOSpageTable[i].valid) {
+            physPageNumber = NachOSpageTable[i].physicalPage;
+            machine->memoryUsedBy[physPageNumber] = -1;
+            machine->virtualPageNo[physPageNumber] = -1;
+            usedPages--;
+        }
+    }
+
     scheduler->Schedule(nextThread); // returns when we've been signalled
 }
 

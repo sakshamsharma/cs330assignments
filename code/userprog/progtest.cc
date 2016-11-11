@@ -179,5 +179,5 @@ ReadInputAndFork (char *filename)
    for (i=0; i<thread_index; i++) {
        if (!exitThreadArray[i]) break;
    }
-   currentThread->Exit(i==thread_index, 0);
+   currentThread->FinishThread();
 }
