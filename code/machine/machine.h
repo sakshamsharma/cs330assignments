@@ -133,6 +133,7 @@ class Machine {
 				// memory (at addr).  Return FALSE if a
 				// correct translation couldn't be found.
 
+
     ExceptionType Translate(int virtAddr, int* physAddr, int size,bool writing);
     				// Translate an address, and check for
 				// alignment.  Set the use and dirty bits in
@@ -170,6 +171,7 @@ class Machine {
 
     int registers[NumTotalRegs]; // CPU registers, for executing user programs
 
+    long long int* LRUTimeStamp; // Stores time of last access
 
 // NOTE: the hardware translation of virtual addresses in the user program
 // to physical addresses (relative to the beginning of "mainMemory")

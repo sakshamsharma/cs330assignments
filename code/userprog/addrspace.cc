@@ -305,6 +305,26 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
                 // Increment the Clock pointer
                 LRU_Clock_ptr = (LRU_Clock_ptr+1)%NumPhysPages;
                 break;
+
+            case LRU_REPL:
+                printf("Entering clock lru replacement algorithm\n");
+
+                long long int val = (1LL)<<60 -1;
+                for(int i = 0; i<NumPhysPages; i++){
+                    if( machine->LRUTimeStamp[i] < val  && machine->isShared[i] == FALSE  && i != notToReplace ){
+                        foundPage = i;
+                        val = machine->LRUTimeStamp[i];
+                    }
+                }
+                ASSERT(foundPage != -1);
+                // Swap out the replaced page
+                // if the process owner exists
+                if(machine->memoryUsedBy[foundPage] != -1) {
+                    threadArray[machine->memoryUsedBy[foundPage]]->space->SaveToSwap(machine->virtualPageNo[foundPage]);
+                }
+                printf("Swapped phys page %d!\n", pid);
+                break;
+
         }
     } else {
         if (replacementAlgo == NO_REPL) {

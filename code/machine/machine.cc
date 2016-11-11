@@ -64,6 +64,7 @@ Machine::Machine(bool debug)
     virtualPageNo = new int[NumPhysPages];
     referenceBit = new bool[NumPhysPages];
     isShared = new bool[NumPhysPages];
+    LRUTimeStamp = new long long int[NumPhysPages];
 
     for (i = 0; i < MemorySize; i++)
         mainMemory[i] = 0;
@@ -73,7 +74,9 @@ Machine::Machine(bool debug)
         virtualPageNo[i] = -1;
         referenceBit[i] = 0;
         isShared[i] = 0;
+        LRUTimeStamp[i] = 0;
     }
+
 
 #ifdef USE_TLB
     tlb = new TranslationEntry[TLBSize];
@@ -101,6 +104,7 @@ Machine::~Machine()
     delete [] virtualPageNo;
     delete [] isShared;
     delete [] referenceBit;
+    delete [] LRUTimeStamp;
     if (tlb != NULL)
         delete [] tlb;
 }
