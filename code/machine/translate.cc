@@ -248,6 +248,7 @@ Machine::Translate(int virtAddr, int* physAddr, int size, bool writing)
     entry->use = TRUE;		// set the use, dirty bits
 
     machine->referenceBit[pageFrame] = TRUE;
+    machine->LRUTimeStamp[pageFrame] = stats->totalTicks;
 
     if (writing)
 	entry->dirty = TRUE;
