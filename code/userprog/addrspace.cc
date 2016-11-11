@@ -273,8 +273,8 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
 
                 if (machine->memoryUsedBy[foundPage] != -1) {
                     threadArray[machine->memoryUsedBy[foundPage]]->space->SaveToSwap(machine->virtualPageNo[foundPage]);
+                    printf("Swapped phys page %d!\n", foundPage);
                 }
-                printf("Swapped phys page %d!\n", foundPage);
 
                 break;
 
@@ -299,8 +299,8 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
                 // if the process owner exists
                 if(machine->memoryUsedBy[foundPage] != -1) {
                     threadArray[machine->memoryUsedBy[foundPage]]->space->SaveToSwap(machine->virtualPageNo[foundPage]);
+                    printf("[%d] Swapped phys page %d!\n", foundPage);
                 }
-                printf("Swapped phys page %d!\n", pid);
 
                 // Increment the Clock pointer
                 LRU_Clock_ptr = (LRU_Clock_ptr+1)%NumPhysPages;
@@ -388,23 +388,29 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
         unsigned start = max(startVirtAddr, noffH.code.virtualAddr);
         unsigned end = min(endVirtAddr, noffH.code.virtualAddr+noffH.code.size);
 
+        // A simplified approach to copying the page to memory
         executable->ReadAt(&(machine->mainMemory[newPhysPage * PageSize]),
                            PageSize, noffH.code.inFileAddr + vpn*PageSize);
 
-        // if (start < end) {
-        //     offset = start - startVirtAddr;
-        //     executable->ReadAt(&(machine->mainMemory[newPhysPage * PageSize + offset]),
-        //                        (end - start), noffH.code.inFileAddr + (start - noffH.code.virtualAddr));
-        // }
+        // For sake of complete correctness, this is the ideal copying
+        // methodology:
 
-        // start = max(startVirtAddr, noffH.initData.virtualAddr);
-        // end = min(endVirtAddr, noffH.initData.virtualAddr+noffH.initData.size);
+        /*
+        if (start < end) {
+            offset = start - startVirtAddr;
+            executable->ReadAt(&(machine->mainMemory[newPhysPage * PageSize + offset]),
+                               (end - start), noffH.code.inFileAddr + (start - noffH.code.virtualAddr));
+        }
 
-        // if (start < end) {
-        //     offset = start - startVirtAddr;
-        //     executable->ReadAt(&(machine->mainMemory[newPhysPage * PageSize + offset]),
-        //                        (end - start), noffH.initData.inFileAddr + (start - noffH.initData.virtualAddr));
-        // }
+        start = max(startVirtAddr, noffH.initData.virtualAddr);
+        end = min(endVirtAddr, noffH.initData.virtualAddr+noffH.initData.size);
+
+        if (start < end) {
+            offset = start - startVirtAddr;
+            executable->ReadAt(&(machine->mainMemory[newPhysPage * PageSize + offset]),
+                               (end - start), noffH.initData.inFileAddr + (start - noffH.initData.virtualAddr));
+        }
+        */
 
         printf("[%d] Used first time vpn:%d at phys: %d\n", pid, vpn, newPhysPage);
     } else {
@@ -432,11 +438,11 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
 //----------------------------------------------------------------------
 
 void ProcessAddrSpace::SaveToSwap(int vpn) {
-    printf("[%d] Saving %d to swap\n", pid, vpn);
+    printf("[%d] Saving vpn:%d, phys:%d to swap\n",
+           pid, NachOSpageTable[vpn].physicalPage, vpn);
     fflush(stdout);
 
     // Physical Page should Exist
-    printf("%d\n", NachOSpageTable[vpn].physicalPage);
     ASSERT(NachOSpageTable[vpn].valid);
 
     // If page is dirty, save it to swap
