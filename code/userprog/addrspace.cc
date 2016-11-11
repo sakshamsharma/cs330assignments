@@ -231,10 +231,40 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
         // we cannot proceed
         ASSERT(numPagesAllocated < NumPhysPages);
     }
+    printf("Replacement Algo is %d\n", replacementAlgo);
 
     if (usedPages == NumPhysPages) {
-        // Implement remaining algorithms here
-        // Find a page to replace
+        switch(replacementAlgo) {
+            case RANDOM_REPL:
+                foundPage = Random()%(NumPhysPages);
+                if (foundPage == notToReplace) {
+                    foundPage = (foundPage + (Random()%(NumPhysPages-1))+1)%NumPhysPages;
+                }
+                break;
+            case LRU_CLOCK_REPL:
+                printf("Entering replacement algorithm\n");
+                while(machine->referenceBit[LRU_Clock_ptr]) {
+                    machine->referenceBit[LRU_Clock_ptr] = 0;
+                    LRU_Clock_ptr = (LRU_Clock_ptr+1)%NumPhysPages;
+                    if (LRU_Clock_ptr == notToReplace) {
+                        LRU_Clock_ptr = (LRU_Clock_ptr+1)%NumPhysPages;
+                    }
+                }
+                foundPage = LRU_Clock_ptr;
+
+                // set the refernce Bit of replaced page
+                machine->referenceBit[foundPage]=1;
+
+                // Swap out the replaced page
+                if(machine->memoryUsedBy[foundPage] != -1) {
+                    threadArray[machine->memoryUsedBy[foundPage]]->space->
+                        SaveToSwap(machine->virtualPageNo[foundPage]);
+                }
+
+                // Increment the Clock pointer
+                LRU_Clock_ptr = (LRU_Clock_ptr+1)%NumPhysPages;
+                break;
+        }
     } else {
         if (replacementAlgo == NO_REPL) {
             foundPage = numPagesAllocated++;
@@ -242,7 +272,7 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
             // Iterate over physical address to
             // find an unused address
             for (i=0; i<NumPhysPages; i++) {
-                if (machine->memoryUsedBy[i] != -1) {
+                if (machine->memoryUsedBy[i] == -1) {
                     foundPage = i;
                     break;
                 }
@@ -258,6 +288,9 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
     machine->virtualPageNo[foundPage] = vpn;
 
     ASSERT(foundPage != -1);
+
+    NachOSpageTable[i].valid = TRUE;
+    NachOSpageTable[i].physicalPage = foundPage;
     return foundPage;
 }
 
@@ -324,6 +357,32 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
     delete executable;
 
     currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
+}
+
+
+//----------------------------------------------------------------------
+// ProcessAddrSpace::SaveToSwap
+//      if the speciied virtual page number is dirty, save it
+//      to swap and set the corresponding Translation Entries
+//      to their new values.
+//
+//----------------------------------------------------------------------
+
+void ProcessAddrSpace::SaveToSwap(int vpn) {
+    // Physical Page should Exist
+    ASSERT(NachOSpageTable[vpn].valid);
+
+    // If page is dirty, save it to swap
+    if (NachOSpageTable[vpn].dirty) {
+        unsigned pageFrame = NachOSpageTable[vpn].physicalPage;
+        memcpy(&(swapMemory[vpn*PageSize]), &(machine->mainMemory[pageFrame*PageSize]),
+                PageSize);
+        NachOSpageTable[vpn].dirty = FALSE;
+    }
+
+    // Set Translation Entry's variables
+    NachOSpageTable[vpn].physicalPage = -1;
+    NachOSpageTable[vpn].valid = FALSE;
 }
 
 //----------------------------------------------------------------------

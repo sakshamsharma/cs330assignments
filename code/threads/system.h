@@ -1,8 +1,8 @@
-// system.h 
+// system.h
 //	All global variables used in Nachos are defined here.
 //
 // Copyright (c) 1992-1993 The Regents of the University of California.
-// All rights reserved.  See copyright.h for copyright notice and limitation 
+// All rights reserved.  See copyright.h for copyright notice and limitation
 // of liability and disclaimer of warranty provisions.
 
 #ifndef SYSTEM_H
@@ -72,6 +72,8 @@ extern int cpu_burst_start_time;	// Records the start of current CPU burst
 extern int completionTimeArray[];	// Records the completion time of all simulated threads
 extern bool excludeMainThread;		// Used by completion time statistics calculation
 
+extern int LRU_Clock_ptr;               // Used by LRU_CLOCK Page replacement algorithm
+
 class TimeSortedWaitQueue {		// Needed to implement system_call_Sleep
 private:
    NachOSThread *t;				// NachOSThread pointer of the sleeping thread
@@ -81,7 +83,7 @@ private:
 public:
    TimeSortedWaitQueue (NachOSThread *th,unsigned w) { t = th; when = w; next = NULL; }
    ~TimeSortedWaitQueue (void) {}
-   
+
    NachOSThread *GetThread (void) { return t; }
    unsigned GetWhen (void) { return when; }
    TimeSortedWaitQueue *GetNext(void) { return next; }
@@ -95,7 +97,7 @@ extern TimeSortedWaitQueue *sleepQueueHead;
 extern Machine* machine;	// user program memory and registers
 #endif
 
-#ifdef FILESYS_NEEDED 		// FILESYS or FILESYS_STUB 
+#ifdef FILESYS_NEEDED 		// FILESYS or FILESYS_STUB
 #include "filesys.h"
 extern FileSystem  *fileSystem;
 #endif

@@ -314,7 +314,7 @@ ExceptionHandler(ExceptionType which)
     } else if ((which == PageFaultException)) {
         virtAddr = (unsigned)machine->ReadRegister(39);
         currentThread->space->PageFaultHandler(virtAddr);
-        machine->WriteRegister(2, 0);
+        // machine->WriteRegister(2, 0);
     } else {
         printf("Unexpected user mode exception %d %d\n", which, type);
         ASSERT(FALSE);

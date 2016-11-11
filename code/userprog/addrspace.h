@@ -43,6 +43,8 @@ class ProcessAddrSpace {
 
     int AddSharedSpace(int SharedSpaceSize);    // appends SharedSPaceSize bytes of
                                                 // shared memory
+    void SaveToSwap(int virtualpagenumber);     // save this page to swap memory
+                                                // so that next page can be brought
 
     TranslationEntry* GetPageTable();
 
