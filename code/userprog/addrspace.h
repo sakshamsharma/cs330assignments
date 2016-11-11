@@ -26,7 +26,7 @@ class ProcessAddrSpace {
     // stored in the file "executable"
     ProcessAddrSpace(OpenFile *threadexecutable, char *filename);
 
-    ProcessAddrSpace (ProcessAddrSpace *parentSpace);	// Used by fork
+    ProcessAddrSpace (ProcessAddrSpace *parentSpace, int pid);	// Used by fork
 
     ~ProcessAddrSpace();			// De-allocate an address space
 
@@ -55,6 +55,7 @@ class ProcessAddrSpace {
                                         // our program is stored in
 
     char *swapMemory;
+    int pid;
                                                 // used while forking
     NoffHeader noffH;                           // stores the noffHeader data
   private:

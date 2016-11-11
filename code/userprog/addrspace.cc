@@ -105,8 +105,10 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *execfile, char *programname)
 //      We need to duplicate the address space of the parent.
 //----------------------------------------------------------------------
 
-ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
+ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace, int _pid)
 {
+    pid = _pid;
+
     numPagesInVM = parentSpace->GetNumPages();
     noffH = parentSpace->noffH;
     unsigned i, numSharedPages = 0, startAddrParent, startAddrChild, newPhysPage;
@@ -215,6 +217,7 @@ int ProcessAddrSpace::AddSharedSpace(int SharedSpaceSize) {
     numPagesInVM += numSharedPages;
 
     delete NachOSpageTable;
+
     NachOSpageTable = NewTranslation;
     RestoreStateOnSwitch();
 
@@ -223,7 +226,7 @@ int ProcessAddrSpace::AddSharedSpace(int SharedSpaceSize) {
 
 //----------------------------------------------------------------------
 // ProcessAddrSpace::GetNextPageToWrite
-// 	Finds next page for page fault handler
+//  Finds next page for page fault handler
 //  and write it to swap array if it was dirty
 //----------------------------------------------------------------------
 int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
@@ -286,14 +289,12 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
         usedPages++;
     }
 
-    machine->memoryUsedBy[foundPage] = currentThread->GetPID();
+    machine->memoryUsedBy[foundPage] = pid;
     machine->virtualPageNo[foundPage] = vpn;
 
     ASSERT(foundPage != -1);
 
     printf("FoundPage is: %d\n", foundPage);
-    NachOSpageTable[vpn].valid = TRUE;
-    NachOSpageTable[vpn].physicalPage = foundPage;
     return foundPage;
 }
 
@@ -373,6 +374,7 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
 //----------------------------------------------------------------------
 
 void ProcessAddrSpace::SaveToSwap(int vpn) {
+
     // Physical Page should Exist
     ASSERT(NachOSpageTable[vpn].valid);
 
@@ -391,7 +393,7 @@ void ProcessAddrSpace::SaveToSwap(int vpn) {
 
 //----------------------------------------------------------------------
 // ProcessAddrSpace::~ProcessAddrSpace
-// 	Dealloate an address space.  Nothing for now!
+//  Dealloate an address space.  Nothing for now!
 //----------------------------------------------------------------------
 
 ProcessAddrSpace::~ProcessAddrSpace()
