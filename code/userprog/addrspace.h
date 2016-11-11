@@ -41,6 +41,7 @@ class ProcessAddrSpace {
 
     TranslationEntry* GetPageTable();
     void PageFaultHandler(unsigned virtAddr);
+    unsigned GetNewPage();
 
     OpenFile *executable;
 

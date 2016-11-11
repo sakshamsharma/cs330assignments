@@ -95,8 +95,7 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *_executable)
     for (i = 0; i < numPagesInVM; i++) {
         NachOSpageTable[i].virtualPage = i;
 
-        NachOSpageTable[i].physicalPage = numPagesAllocated;
-        numPagesAllocated++;
+        NachOSpageTable[i].physicalPage = GetNewPage();
 
         NachOSpageTable[i].valid = TRUE;
         NachOSpageTable[i].use = FALSE;
@@ -166,21 +165,22 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
                                         numPagesInVM, size);
     // first, set up the translation
     unsigned startAddrParent = parentPageTable[0].physicalPage*PageSize;
-    unsigned startAddrChild = numPagesAllocated*PageSize;
+    unsigned thisPage;
+
     NachOSpageTable = new TranslationEntry[numPagesInVM];
     for (i = 0, j = 0; i < numPagesInVM; i++) {
         NachOSpageTable[i].virtualPage = i;
 
         // If shared memory, then physical page is from parent's address space
         if (!parentPageTable[i].shared) {
-            NachOSpageTable[i].physicalPage = numPagesAllocated;
+            thisPage = GetNewPage();
+            NachOSpageTable[i].physicalPage = thisPage;
             // Copy the contents
             for (int k = 0; k < PageSize; ++ k) {
-                machine->mainMemory[(numPagesAllocated * PageSize) + k] = 
+                machine->mainMemory[(thisPage * PageSize) + k] = 
                         machine->mainMemory[startAddrParent + (j * PageSize) + k];
             }
             ++ j;
-            ++ numPagesAllocated;
             NachOSpageTable[i].shared = FALSE;
         } else {
             NachOSpageTable[i].physicalPage = parentPageTable[i].physicalPage;
@@ -204,7 +204,9 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
 int ProcessAddrSpace::AddSharedSpace(int SharedSpaceSize) {
     unsigned int i, numSharedPages = divRoundUp(SharedSpaceSize, PageSize);
 
+    // TODO: Remove this
     ASSERT(numSharedPages + numPagesAllocated <= NumPhysPages);
+
     TranslationEntry* NewTranslation = new TranslationEntry[numPagesInVM + numSharedPages];
 
     for (i = 0; i < numPagesInVM; ++ i) {
@@ -219,11 +221,13 @@ int ProcessAddrSpace::AddSharedSpace(int SharedSpaceSize) {
     
     
     for (; i < numSharedPages + numPagesInVM; ++ i) {
-	NewTranslation[i].virtualPage = i;
-	NewTranslation[i].physicalPage = i + numPagesAllocated;
-	NewTranslation[i].valid = TRUE;
-	NewTranslation[i].use = FALSE;
-	NewTranslation[i].dirty = FALSE;
+        NewTranslation[i].virtualPage = i;
+
+        NewTranslation[i].physicalPage = GetNewPage();
+
+        NewTranslation[i].valid = TRUE;
+        NewTranslation[i].use = FALSE;
+        NewTranslation[i].dirty = FALSE;
         NewTranslation[i].shared = TRUE;
         NewTranslation[i].readOnly = FALSE;
     }
@@ -237,6 +241,11 @@ int ProcessAddrSpace::AddSharedSpace(int SharedSpaceSize) {
     RestoreStateOnSwitch();
 
     return (numPagesInVM - numSharedPages) * PageSize;
+}
+
+unsigned ProcessAddrSpace::GetNewPage() {
+    int newPhys = numPagesAllocated++;
+    return newPhys;
 }
 
 void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
