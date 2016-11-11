@@ -271,11 +271,6 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
                     foundPage = Random()%(NumPhysPages);
                 };
 
-                if (machine->memoryUsedBy[foundPage] != -1) {
-                    threadArray[machine->memoryUsedBy[foundPage]]->space->SaveToSwap(machine->virtualPageNo[foundPage]);
-                    printf("Swapped phys page %d!\n", foundPage);
-                }
-
                 break;
 
             case LRU_CLOCK_REPL:
@@ -295,13 +290,6 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
                 // set the refernce Bit of replaced page
                 machine->referenceBit[foundPage]=TRUE;
 
-                // Swap out the replaced page
-                // if the process owner exists
-                if(machine->memoryUsedBy[foundPage] != -1) {
-                    threadArray[machine->memoryUsedBy[foundPage]]->space->SaveToSwap(machine->virtualPageNo[foundPage]);
-                    printf("[%d] Swapped phys page %d!\n", foundPage);
-                }
-
                 // Increment the Clock pointer
                 LRU_Clock_ptr = (LRU_Clock_ptr+1)%NumPhysPages;
                 break;
@@ -317,15 +305,18 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
                     }
                 }
                 ASSERT(foundPage != -1);
-                // Swap out the replaced page
-                // if the process owner exists
-                if(machine->memoryUsedBy[foundPage] != -1) {
-                    threadArray[machine->memoryUsedBy[foundPage]]->space->SaveToSwap(machine->virtualPageNo[foundPage]);
-                }
-                printf("Swapped phys page %d!\n", pid);
-                break;
 
+                break;
         }
+
+        // SWAPPING
+        // Swap this page if needed, that is, if this space is owned
+        // by someone
+        if (machine->memoryUsedBy[foundPage] != -1) {
+            threadArray[machine->memoryUsedBy[foundPage]]->space->SaveToSwap(machine->virtualPageNo[foundPage]);
+            printf("Swapped phys page %d!\n", foundPage);
+        }
+
     } else {
         if (replacementAlgo == NO_REPL) {
             foundPage = numPagesAllocated++;
