@@ -108,10 +108,17 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *execfile, char *programname)
 ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
 {
     numPagesInVM = parentSpace->GetNumPages();
-    noffH = parentSpace->noffH;
     unsigned i, numSharedPages = 0, startAddrParent, startAddrChild, newPhysPage;
 
     fileName = copyFileName(parentSpace->fileName);
+
+    OpenFile *execfile = fileSystem->Open(fileName);
+    execfile->ReadAt((char *)&noffH, sizeof(noffH), 0);
+    if ((noffH.noffMagic != NOFFMAGIC) &&
+		(WordToHost(noffH.noffMagic) == NOFFMAGIC))
+    	SwapHeader(&noffH);
+    ASSERT(noffH.noffMagic == NOFFMAGIC);
+    delete execfile;
 
     TranslationEntry* parentPageTable = parentSpace->GetPageTable();
 
@@ -150,7 +157,7 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
 
                 // Copy the contents
                 memcpy(&(machine->mainMemory[startAddrChild]),
-                        &(machine->mainMemory[startAddrParent]), PageSize);
+                       &(machine->mainMemory[startAddrParent]), PageSize);
 
                 stats->numPageFaults ++;
                 currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
@@ -289,32 +296,16 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
     bzero(&(machine->mainMemory[newPhysPage*PageSize]), PageSize);
 
     OpenFile *executable = fileSystem->Open(fileName);
+    executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
+    if ((noffH.noffMagic != NOFFMAGIC) &&
+        (WordToHost(noffH.noffMagic) == NOFFMAGIC))
+        SwapHeader(&noffH);
+    ASSERT(noffH.noffMagic == NOFFMAGIC)
 
     if (!NachOSpageTable[vpn].ifUsed) {
-        unsigned start = max(startVirtAddr, noffH.code.virtualAddr);
-        unsigned end = min(endVirtAddr, noffH.code.virtualAddr+noffH.code.size);
-        // printf("[Code] For virtual page: %d, start: %d, end: %d\n", vpn, start, end);
-        // printf("executable: %u\n", (unsigned)executable);
-        if (start < end) {
-            offset = start - startVirtAddr;
-            pageFrame = newPhysPage;
-            // printf("addr reading at: %d %d %d\n", pageFrame*PageSize + offset,
-            // (end-start), noffH.code.inFileAddr + (start - noffH.code.virtualAddr));
-            executable->ReadAt(&(machine->mainMemory[pageFrame * PageSize + offset]),
-                               (end - start), noffH.code.inFileAddr + (start - noffH.code.virtualAddr));
-        }
-
-        start = max(startVirtAddr, noffH.initData.virtualAddr);
-        end = min(endVirtAddr, noffH.initData.virtualAddr+noffH.initData.size);
-        // printf("[initData] For virtual page: %d, start: %d, end: %d\n", vpn, start, end);
-        if (start < end) {
-            offset = start - startVirtAddr;
-            pageFrame = newPhysPage;
-            executable->ReadAt(&(machine->mainMemory[pageFrame * PageSize + offset]),
-                               (end - start), noffH.initData.inFileAddr + (start - noffH.initData.virtualAddr));
-        }
-
-        // TODO: Check this
+        pageFrame = newPhysPage;
+        executable->ReadAt(&(machine->mainMemory[pageFrame * PageSize]),
+                           PageSize, noffH.code.inFileAddr + vpn*PageSize);
         NachOSpageTable[vpn].ifUsed = 1;
     } else {
         // Get this from swap memory
@@ -323,7 +314,7 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
 
     delete executable;
 
-    currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
+   currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
 }
 
 //----------------------------------------------------------------------
