@@ -30,6 +30,8 @@ class ProcessAddrSpace {
 
     ~ProcessAddrSpace();			// De-allocate an address space
 
+    void CopyParentAddrSpace(ProcessAddrSpace *parentSpace);
+
     void InitUserCPURegisters();		// Initialize user-level CPU registers,
         					// before jumping to user code
 
@@ -53,6 +55,9 @@ class ProcessAddrSpace {
 
     char *fileName;                     // Store a pointer to the executable
                                         // our program is stored in
+
+    bool isVpnShared(int vpn);  // Returns if the asked vpn is a
+                                // shared one
 
     char *swapMemory;
     int pid;

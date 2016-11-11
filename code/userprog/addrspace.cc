@@ -110,10 +110,11 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *execfile, char *programname, int _p
 ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace, int _pid)
 {
     pid = _pid;
+    printf("Forking off %d from %d\n", pid, currentThread->GetPID());
 
     numPagesInVM = parentSpace->GetNumPages();
     noffH = parentSpace->noffH;
-    unsigned i, numSharedPages = 0, startAddrParent, startAddrChild, newPhysPage;
+    unsigned i, numSharedPages = 0;
 
     fileName = copyFileName(parentSpace->fileName);
 
@@ -129,13 +130,26 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace, int _pid)
     swapMemory = new char[size];
     bzero(swapMemory, size);
 
-    DEBUG('a', "Initializing address space, num pages %d, size %d\n",
-                                        numPagesInVM, size);
     // first, set up the translation
     NachOSpageTable = new TranslationEntry[numPagesInVM];
     for (i = 0; i < numPagesInVM; i++) {
         NachOSpageTable[i].virtualPage = i;
+        NachOSpageTable[i].shared = parentPageTable[i].shared;
+        NachOSpageTable[i].ifUsed = parentPageTable[i].ifUsed;
+        NachOSpageTable[i].valid = parentPageTable[i].valid;
+        NachOSpageTable[i].use = parentPageTable[i].use;
+        NachOSpageTable[i].dirty = parentPageTable[i].dirty;
+        NachOSpageTable[i].readOnly = parentPageTable[i].readOnly;
+    }
+    // Copying of data will be done later on
+}
 
+// Copies all valid pages from the parent's space in case of forked process
+void ProcessAddrSpace::CopyParentAddrSpace(ProcessAddrSpace *parentSpace) {
+    unsigned startAddrParent, startAddrChild, newPhysPage;
+
+    for (int i = 0; i < numPagesInVM; i++) {
+        TranslationEntry* parentPageTable = parentSpace->GetPageTable();
         // If shared memory, then physical page is from parent's address space
         if (!parentPageTable[i].shared) {
 
@@ -154,26 +168,15 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace, int _pid)
 
                 // Copy the contents
                 memcpy(&(machine->mainMemory[startAddrChild]),
-                        &(machine->mainMemory[startAddrParent]), PageSize);
+                       &(machine->mainMemory[startAddrParent]), PageSize);
 
                 stats->numPageFaults ++;
-
-                // TODO: What if it wasn't used till now?
-                // Should it be fine?
             }
         } else {
             NachOSpageTable[i].physicalPage = parentPageTable[i].physicalPage;
             stats->numPageFaults ++;
         }
 
-        NachOSpageTable[i].shared = parentPageTable[i].shared;
-        NachOSpageTable[i].ifUsed = parentPageTable[i].ifUsed;
-        NachOSpageTable[i].valid = parentPageTable[i].valid;
-        NachOSpageTable[i].use = parentPageTable[i].use;
-        NachOSpageTable[i].dirty = parentPageTable[i].dirty;
-        NachOSpageTable[i].readOnly = parentPageTable[i].readOnly;  	// if the code segment was entirely on
-                                        			// a separate page, we could set its
-                                        			// pages to be read-only
         if (NachOSpageTable[i].valid && !(NachOSpageTable[i].shared)) {
             currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
         }
@@ -226,6 +229,10 @@ int ProcessAddrSpace::AddSharedSpace(int SharedSpaceSize) {
     return (numPagesInVM - numSharedPages) * PageSize;
 }
 
+bool ProcessAddrSpace::isVpnShared(int vpn) {
+    return NachOSpageTable[vpn].shared;
+}
+
 //----------------------------------------------------------------------
 // ProcessAddrSpace::GetNextPageToWrite
 //  Finds next page for page fault handler
@@ -239,34 +246,56 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
         ASSERT(numPagesAllocated < NumPhysPages);
     }
 
-    printf("Getting a new page for VPN: %d for the process: %d\n", vpn, currentThread->GetPID());
+    printf("[%d] wants a page for vpn %d\n", pid, vpn);
     if (usedPages == NumPhysPages) {
         switch(replacementAlgo) {
             case RANDOM_REPL:
+                printf("Entering random replacement algorithm\n");
                 foundPage = Random()%(NumPhysPages);
                 if (foundPage == notToReplace) {
                     foundPage = (foundPage + (Random()%(NumPhysPages-1))+1)%NumPhysPages;
                 }
+
+                // If this is a shared page
+                while (threadArray[machine->memoryUsedBy[foundPage]]->space->isVpnShared(machine->virtualPageNo[foundPage])) {
+                    foundPage = Random()%(NumPhysPages);
+                };
+
                 break;
+
             case LRU_CLOCK_REPL:
-                printf("Entering replacement algorithm\n");
+                printf("Entering clock lru replacement algorithm\n");
                 while(machine->referenceBit[LRU_Clock_ptr]) {
+                    printf("Ptr: %d, bit %d\n", LRU_Clock_ptr, machine->referenceBit[LRU_Clock_ptr]);
                     machine->referenceBit[LRU_Clock_ptr] = 0;
                     LRU_Clock_ptr = (LRU_Clock_ptr+1)%NumPhysPages;
+
+                    // This is the page being copied, cannot replace it
                     if (LRU_Clock_ptr == notToReplace) {
+                        machine->referenceBit[LRU_Clock_ptr] = 0;
                         LRU_Clock_ptr = (LRU_Clock_ptr+1)%NumPhysPages;
                     }
+
+
+                    // If this is a shared page, we cannot replace it
+                    while (threadArray[machine->memoryUsedBy[LRU_Clock_ptr]]->space->isVpnShared(machine->virtualPageNo[LRU_Clock_ptr])) {
+                        LRU_Clock_ptr = (LRU_Clock_ptr+1)%NumPhysPages;
+                    };
                 }
+
                 foundPage = LRU_Clock_ptr;
 
                 // set the refernce Bit of replaced page
-                machine->referenceBit[foundPage]=1;
+                machine->referenceBit[foundPage]=TRUE;
 
                 // Swap out the replaced page
                 if(machine->memoryUsedBy[foundPage] != -1) {
-                    threadArray[machine->memoryUsedBy[foundPage]]->space->
-                        SaveToSwap(machine->virtualPageNo[foundPage]);
+                    printf("[%d] For putting VPN %d, Phys %d used by %d\n", pid, vpn, foundPage, machine->memoryUsedBy[foundPage]);
+                    printf("Process pid is %d\n", threadArray[machine->memoryUsedBy[foundPage]]->GetPID());
+                    printf("That vpn was %d\n", machine->virtualPageNo[foundPage]);
+                    threadArray[machine->memoryUsedBy[foundPage]]->space->SaveToSwap(machine->virtualPageNo[foundPage]);
                 }
+                printf("Swapped!\n");
 
                 // Increment the Clock pointer
                 LRU_Clock_ptr = (LRU_Clock_ptr+1)%NumPhysPages;
@@ -281,6 +310,7 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
             for (i=0; i<NumPhysPages; i++) {
                 if (machine->memoryUsedBy[i] == -1) {
                     foundPage = i;
+                    machine->referenceBit[foundPage] = 1;
                     break;
                 }
             }
@@ -353,17 +383,17 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
                                (end - start), noffH.initData.inFileAddr + (start - noffH.initData.virtualAddr));
         }
 
-        // TODO: Check this
-        NachOSpageTable[vpn].ifUsed = 1;
     } else {
         // Get this from swap memory
         memcpy(&(machine->mainMemory[newPhysPage*PageSize]), &(swapMemory[vpn*PageSize]), PageSize);
     }
 
     delete executable;
+    NachOSpageTable[vpn].ifUsed = 1;
 
-    printf("Returned from getnextpagetowrite\n");
+    printf("[%d] Returned from getnextpagetowrite\n", pid);
     currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
+    printf("[%d] Returned from sleep\n", pid);
 }
 
 
@@ -376,6 +406,8 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
 //----------------------------------------------------------------------
 
 void ProcessAddrSpace::SaveToSwap(int vpn) {
+    printf("[%d] Saving %d to swap\n", pid, vpn);
+    fflush(stdout);
 
     // Physical Page should Exist
     ASSERT(NachOSpageTable[vpn].valid);
