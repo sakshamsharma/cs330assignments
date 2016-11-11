@@ -15,6 +15,7 @@
 #include "interrupt.h"
 #include "stats.h"
 #include "timer.h"
+// #include "lish.h"
 
 #define MAX_THREAD_COUNT 1000
 #define MAX_BATCH_SIZE 100
@@ -73,6 +74,7 @@ extern int completionTimeArray[];	// Records the completion time of all simulate
 extern bool excludeMainThread;		// Used by completion time statistics calculation
 
 extern int LRU_Clock_ptr;               // Used by LRU_CLOCK Page replacement algorithm
+extern List *FIFOQueue;                 // Queue used by FIFO page replacement algorithm
 
 class TimeSortedWaitQueue {		// Needed to implement system_call_Sleep
 private:

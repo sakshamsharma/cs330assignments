@@ -249,6 +249,8 @@ bool ProcessAddrSpace::isVpnShared(int vpn) {
 //----------------------------------------------------------------------
 int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
     int i, foundPage = -1;
+    int* tmp;
+    long long int val = (1LL)<<60 -1;
     if (replacementAlgo == NO_REPL) {
         // If all pages have been allocated,
         // we cannot proceed
@@ -295,10 +297,10 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
                 break;
 
             case LRU_REPL:
-                printf("Entering clock lru replacement algorithm\n");
+                printf("Entering lru replacement algorithm\n");
 
-                long long int val = (1LL)<<60 -1;
-                for(int i = 0; i<NumPhysPages; i++){
+                machine->LRUTimeStamp[notToReplace] = stats->totalTicks-1;
+                for(i = 0; i<NumPhysPages; i++){
                     if( machine->LRUTimeStamp[i] < val  && machine->isShared[i] == FALSE  && i != notToReplace ){
                         foundPage = i;
                         val = machine->LRUTimeStamp[i];
@@ -306,6 +308,24 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
                 }
                 ASSERT(foundPage != -1);
 
+                machine->LRUTimeStamp[foundPage] = stats->totalTicks;
+
+                break;
+            case FIFO_REPL:
+                printf("Entering FIFO replacement algorithm\n");
+
+                while( TRUE ) {
+                    tmp = (int *)FIFOQueue->Remove();
+                    foundPage = *tmp;
+                    if (machine->memoryUsedBy[foundPage] == -1 || machine->isShared[i]) {
+                        delete tmp;
+                    } else {
+                        break;
+                    }
+                }
+
+                ASSERT(foundPage != -1);
+                FIFOQueue->Append((void *)tmp);
                 break;
         }
 
@@ -328,6 +348,11 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
                 if (machine->memoryUsedBy[i] == -1) {
                     foundPage = i;
                     machine->referenceBit[foundPage] = 1;
+                    if (replacementAlgo == FIFO_REPL) {
+                        int *tmp = new int;
+                        *tmp = foundPage;
+                        FIFOQueue->Append((void *)tmp);
+                    }
                     break;
                 }
             }

@@ -34,6 +34,7 @@ char **batchProcesses;			// Names of batch processes
 int *priority;				// Process priority
 int replacementAlgo;        // Page replacement algo used with -R flag
 int LRU_Clock_ptr;          // LRU Clock Hand
+List *FIFOQueue;            // Queue used by Page replacement algorithm
 
 int cpu_burst_start_time;        // Records the start of current CPU burst
 int completionTimeArray[MAX_THREAD_COUNT];        // Records the completion time of all simulated threads
@@ -138,6 +139,7 @@ Initialize(int argc, char **argv)
     thread_index = 0;
 
     sleepQueueHead = NULL;
+    FIFOQueue = new List;
 
 #ifdef USER_PROGRAM
     bool debugUserProg = FALSE;	// single step user program
