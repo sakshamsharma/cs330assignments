@@ -66,38 +66,26 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *_executable)
     unsigned int pageFrame;
 
     executable = _executable;
-
     executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
     if ((noffH.noffMagic != NOFFMAGIC) && 
 		(WordToHost(noffH.noffMagic) == NOFFMAGIC))
     	SwapHeader(&noffH);
     ASSERT(noffH.noffMagic == NOFFMAGIC);
 
+    DEBUG('a', "Initializing address space, num pages %d, size %d\n",
+          numPagesInVM, size);
+
     // how big is address space?
     size = noffH.code.size + noffH.initData.size + noffH.uninitData.size 
-        + UserStackSize;	// we need to increase the size
-    // to leave room for the stack
+        + UserStackSize;
     numPagesInVM = divRoundUp(size, PageSize);
     size = numPagesInVM * PageSize;
-
-    // TODO: Fix this later
-    // check we're not trying
-    // to run anything too big --
-    // at least until we have
-    // virtual memory
-    ASSERT(numPagesInVM+numPagesAllocated <= NumPhysPages);
-
-    DEBUG('a', "Initializing address space, num pages %d, size %d\n", 
-          numPagesInVM, size);
 
     // first, set up the translation
     NachOSpageTable = new TranslationEntry[numPagesInVM];
     for (i = 0; i < numPagesInVM; i++) {
         NachOSpageTable[i].virtualPage = i;
-
-        NachOSpageTable[i].physicalPage = GetNewPage();
-
-        NachOSpageTable[i].valid = TRUE;
+        NachOSpageTable[i].valid = FALSE;
         NachOSpageTable[i].use = FALSE;
         NachOSpageTable[i].dirty = FALSE;
         NachOSpageTable[i].shared = FALSE;
@@ -106,31 +94,28 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *_executable)
         // a separate page, we could set its
         // pages to be read-only
     }
-    // zero out the entire address space, to zero the unitialized data segment
-    // and the stack segment
-    bzero(&machine->mainMemory[(NachOSpageTable[0].physicalPage)*PageSize], size);
  
-    // then, copy in the code and data segments into memory
-    if (noffH.code.size > 0) {
-        DEBUG('a', "Initializing code segment, at 0x%x, size %d\n", 
-              noffH.code.virtualAddr, noffH.code.size);
-        vpn = noffH.code.virtualAddr/PageSize;
-        offset = noffH.code.virtualAddr%PageSize;
-        entry = &NachOSpageTable[vpn];
-        pageFrame = entry->physicalPage;
-        executable->ReadAt(&(machine->mainMemory[pageFrame * PageSize + offset]),
-                           noffH.code.size, noffH.code.inFileAddr);
-    }
-    if (noffH.initData.size > 0) {
-        DEBUG('a', "Initializing data segment, at 0x%x, size %d\n", 
-              noffH.initData.virtualAddr, noffH.initData.size);
-        vpn = noffH.initData.virtualAddr/PageSize;
-        offset = noffH.initData.virtualAddr%PageSize;
-        entry = &NachOSpageTable[vpn];
-        pageFrame = entry->physicalPage;
-        executable->ReadAt(&(machine->mainMemory[pageFrame * PageSize + offset]),
-                           noffH.initData.size, noffH.initData.inFileAddr);
-    }
+    // // then, copy in the code and data segments into memory
+    // if (noffH.code.size > 0) {
+    //     DEBUG('a', "Initializing code segment, at 0x%x, size %d\n",
+    //           noffH.code.virtualAddr, noffH.code.size);
+    //     vpn = noffH.code.virtualAddr/PageSize;
+    //     offset = noffH.code.virtualAddr%PageSize;
+    //     entry = &NachOSpageTable[vpn];
+    //     pageFrame = entry->physicalPage;
+    //     executable->ReadAt(&(machine->mainMemory[pageFrame * PageSize + offset]),
+    //                        noffH.code.size, noffH.code.inFileAddr);
+    // }
+    // if (noffH.initData.size > 0) {
+    //     DEBUG('a', "Initializing data segment, at 0x%x, size %d\n",
+    //           noffH.initData.virtualAddr, noffH.initData.size);
+    //     vpn = noffH.initData.virtualAddr/PageSize;
+    //     offset = noffH.initData.virtualAddr%PageSize;
+    //     entry = &NachOSpageTable[vpn];
+    //     pageFrame = entry->physicalPage;
+    //     executable->ReadAt(&(machine->mainMemory[pageFrame * PageSize + offset]),
+    //                        noffH.initData.size, noffH.initData.inFileAddr);
+    // }
 
 }
 
@@ -173,13 +158,14 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
 
         // If shared memory, then physical page is from parent's address space
         if (!parentPageTable[i].shared) {
-            thisPage = GetNewPage();
-            NachOSpageTable[i].physicalPage = thisPage;
+            if (parentPageTable[i].valid) {
+                thisPage = GetNewPage();
 
-            // Copy the contents
-            memcpy(machine->mainMemory + thisPage*PageSize,
-                   machine->mainMemory + parentPageTable[i].physicalPage*PageSize,
-                   PageSize);
+                NachOSpageTable[i].physicalPage = thisPage;
+                memcpy(machine->mainMemory + thisPage*PageSize,
+                       machine->mainMemory + parentPageTable[i].physicalPage*PageSize,
+                       PageSize);
+            }
         } else {
             NachOSpageTable[i].physicalPage = parentPageTable[i].physicalPage;
         }
@@ -246,8 +232,27 @@ unsigned ProcessAddrSpace::GetNewPage() {
 }
 
 void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
+    NoffHeader noffH;
+
     stats->numPageFaults++;
     unsigned vpn = virtAddr/PageSize;
+    unsigned newPhysPage = GetNewPage();
+
+    NachOSpageTable[vpn].physicalPage = newPhysPage;
+    NachOSpageTable[vpn].valid = TRUE;
+    NachOSpageTable[vpn].dirty = FALSE;
+
+    // Copied from original main constructor
+    executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
+    if ((noffH.noffMagic != NOFFMAGIC) &&
+		(WordToHost(noffH.noffMagic) == NOFFMAGIC))
+    	SwapHeader(&noffH);
+    ASSERT(noffH.noffMagic == NOFFMAGIC);
+
+    bzero(&machine->mainMemory[newPhysPage*PageSize], PageSize);
+
+    executable->ReadAt(&(machine->mainMemory[newPhysPage * PageSize]),
+                       PageSize, noffH.code.inFileAddr + vpn*PageSize);
 }
 
 //----------------------------------------------------------------------
