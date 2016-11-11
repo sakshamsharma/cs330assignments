@@ -110,7 +110,7 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *execfile, char *programname, int _p
 ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace, int _pid)
 {
     pid = _pid;
-    printf("Forking off %d from %d\n", pid, currentThread->GetPID());
+    // printf("Forking off %d from %d\n", pid, currentThread->GetPID());
 
     numPagesInVM = parentSpace->GetNumPages();
     noffH = parentSpace->noffH;
@@ -187,7 +187,7 @@ void ProcessAddrSpace::CopyParentAddrSpace(ProcessAddrSpace *parentSpace) {
             currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
         }
     }
-    printf("Parent is finished\n");
+    // printf("Parent is finished\n");
 }
 
 //----------------------------------------------------------------------
@@ -225,7 +225,7 @@ int ProcessAddrSpace::AddSharedSpace(int SharedSpaceSize) {
 
         machine->isShared[NewTranslation[i].physicalPage] = 1;
 
-        printf("Sharing phys at vpn %d: %d\n", NewTranslation[i].physicalPage, i);
+        // printf("Sharing phys at vpn %d: %d\n", NewTranslation[i].physicalPage, i);
     }
 
     numPagesInVM += numSharedPages;
@@ -255,16 +255,16 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
         // If all pages have been allocated,
         // we cannot proceed
         if(numPagesAllocated >= NumPhysPages) {
-            printf("%d %d\n", numPagesAllocated, NumPhysPages);
+            // printf("%d %d\n", numPagesAllocated, NumPhysPages);
             ASSERT(false);
         }
     }
 
-    printf("[%d] wants a page for vpn %d\n", pid, vpn);
+    // printf("[%d] wants a page for vpn %d\n", pid, vpn);
     if (usedPages == NumPhysPages) {
         switch(replacementAlgo) {
             case RANDOM_REPL:
-                printf("Entering random replacement algorithm\n");
+                // printf("Entering random replacement algorithm\n");
                 foundPage = Random()%(NumPhysPages);
 
                 // If this is a shared page or not to be replaced, loop
@@ -276,13 +276,13 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
                 break;
 
             case LRU_CLOCK_REPL:
-                printf("Entering clock lru replacement algorithm\n");
+                // printf("Entering clock lru replacement algorithm\n");
 
                 while(machine->referenceBit[LRU_Clock_ptr] ||
                       machine->isShared[LRU_Clock_ptr] ||
                       LRU_Clock_ptr == notToReplace) {
 
-                    printf("Ptr: %d, bit %d\n", LRU_Clock_ptr, machine->referenceBit[LRU_Clock_ptr]);
+                    // printf("Ptr: %d, bit %d\n", LRU_Clock_ptr, machine->referenceBit[LRU_Clock_ptr]);
                     machine->referenceBit[LRU_Clock_ptr] = 0;
                     LRU_Clock_ptr = (LRU_Clock_ptr+1)%NumPhysPages;
                 }
@@ -297,7 +297,7 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
                 break;
 
             case LRU_REPL:
-                printf("Entering lru replacement algorithm\n");
+                // printf("Entering lru replacement algorithm\n");
 
                 if(notToReplace != -1) {
                     machine->LRUTimeStamp[notToReplace] = stats->totalTicks-1;
@@ -315,7 +315,7 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
 
                 break;
             case FIFO_REPL:
-                printf("Entering FIFO replacement algorithm\n");
+                // printf("Entering FIFO replacement algorithm\n");
 
                 tmp = (int *)FIFOQueue->Remove();
                 foundPage = *tmp;
@@ -337,7 +337,7 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
 
                 ASSERT(foundPage != -1);
                 FIFOQueue->Append((void *)tmp);
-                printf("FoundPage is %d\n", foundPage);
+                // printf("FoundPage is %d\n", foundPage);
                 break;
         }
 
@@ -345,9 +345,9 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
         // Swap this page if needed, that is, if this space is owned
         // by someone
         if (machine->memoryUsedBy[foundPage] != -1) {
-            printf("[%d] Swapping %d owned by %d!!!\n", pid, foundPage, machine->memoryUsedBy[foundPage]);
+            // printf("[%d] Swapping %d owned by %d!!!\n", pid, foundPage, machine->memoryUsedBy[foundPage]);
             threadArray[machine->memoryUsedBy[foundPage]]->space->SaveToSwap(machine->virtualPageNo[foundPage]);
-            printf("Swapped phys page %d!\n", foundPage);
+            // printf("Swapped phys page %d!\n", foundPage);
         }
 
     } else {
@@ -380,7 +380,7 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
 
     ASSERT(foundPage != -1);
 
-    printf("FoundPage is: %d\n", foundPage);
+    // printf("FoundPage is: %d\n", foundPage);
     return foundPage;
 }
 
@@ -392,7 +392,7 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
 //----------------------------------------------------------------------
 
 void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
-    printf("[%d] Page fault for %d\n", currentThread->GetPID(), virtAddr);
+    // printf("[%d] Page fault for %d\n", currentThread->GetPID(), virtAddr);
 
     stats->numPageFaults ++;
 
@@ -441,7 +441,8 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
         }
         */
 
-        printf("[%d] Used first time vpn:%d at phys: %d\n", pid, vpn, newPhysPage);
+        NachOSpageTable[vpn].dirty = 1;
+        // printf("[%d] Used first time vpn:%d at phys: %d\n", pid, vpn, newPhysPage);
     } else {
         // Get this from swap memory
         memcpy(&(machine->mainMemory[newPhysPage*PageSize]), &(swapMemory[vpn*PageSize]), PageSize);
@@ -450,11 +451,11 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
     delete executable;
     NachOSpageTable[vpn].ifUsed = 1;
 
-    printf("[%d] Going to sleep\n", pid);
+    // printf("[%d] Going to sleep\n", pid);
     currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
-    printf("[%d] Returned from sleep\n", pid);
-    printf("Was faulting on vpn: %d\n", vpn);
-    printf("It is now at phys: %d\n", NachOSpageTable[vpn].physicalPage);
+    // printf("[%d] Returned from sleep\n", pid);
+    // printf("Was faulting on vpn: %d\n", vpn);
+    // printf("It is now at phys: %d\n", NachOSpageTable[vpn].physicalPage);
 }
 
 
@@ -467,17 +468,17 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
 //----------------------------------------------------------------------
 
 void ProcessAddrSpace::SaveToSwap(int vpn) {
-    printf("[%d] Saving vpn:%d, phys:%d to swap\n",
-           pid, vpn, NachOSpageTable[vpn].physicalPage);
-    fflush(stdout);
+    // printf("[%d] Saving vpn:%d, phys:%d to swap\n", pid, vpn, NachOSpageTable[vpn].physicalPage);
 
     // Physical Page should Exist
     ASSERT(NachOSpageTable[vpn].valid);
 
-    unsigned pageFrame = NachOSpageTable[vpn].physicalPage;
-    memcpy(&(swapMemory[vpn*PageSize]), &(machine->mainMemory[pageFrame*PageSize]),
-           PageSize);
-    NachOSpageTable[vpn].dirty = FALSE;
+    if (NachOSpageTable[vpn].dirty) {
+        unsigned pageFrame = NachOSpageTable[vpn].physicalPage;
+        memcpy(&(swapMemory[vpn*PageSize]), &(machine->mainMemory[pageFrame*PageSize]),
+               PageSize);
+        NachOSpageTable[vpn].dirty = FALSE;
+    }
 
     // Set Translation Entry's variables
     NachOSpageTable[vpn].physicalPage = -1;
