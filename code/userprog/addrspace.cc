@@ -57,7 +57,7 @@ SwapHeader (NoffHeader *noffH)
 //	"executable" is the file containing the object code to load into memory
 //----------------------------------------------------------------------
 
-ProcessAddrSpace::ProcessAddrSpace(OpenFile *executable)
+ProcessAddrSpace::ProcessAddrSpace(OpenFile *_executable)
 {
     NoffHeader noffH;
     unsigned int i, size;
@@ -65,65 +65,72 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *executable)
     TranslationEntry *entry;
     unsigned int pageFrame;
 
+    executable = _executable;
+
     executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
     if ((noffH.noffMagic != NOFFMAGIC) && 
 		(WordToHost(noffH.noffMagic) == NOFFMAGIC))
     	SwapHeader(&noffH);
     ASSERT(noffH.noffMagic == NOFFMAGIC);
 
-// how big is address space?
+    // how big is address space?
     size = noffH.code.size + noffH.initData.size + noffH.uninitData.size 
-			+ UserStackSize;	// we need to increase the size
-						// to leave room for the stack
+        + UserStackSize;	// we need to increase the size
+    // to leave room for the stack
     numPagesInVM = divRoundUp(size, PageSize);
     size = numPagesInVM * PageSize;
 
-    ASSERT(numPagesInVM+numPagesAllocated <= NumPhysPages);		// check we're not trying
-										// to run anything too big --
-										// at least until we have
-										// virtual memory
+    // TODO: Fix this later
+    // check we're not trying
+    // to run anything too big --
+    // at least until we have
+    // virtual memory
+    ASSERT(numPagesInVM+numPagesAllocated <= NumPhysPages);
 
     DEBUG('a', "Initializing address space, num pages %d, size %d\n", 
-					numPagesInVM, size);
-// first, set up the translation 
+          numPagesInVM, size);
+
+    // first, set up the translation
     NachOSpageTable = new TranslationEntry[numPagesInVM];
     for (i = 0; i < numPagesInVM; i++) {
-	NachOSpageTable[i].virtualPage = i;
-	NachOSpageTable[i].physicalPage = i+numPagesAllocated;
-	NachOSpageTable[i].valid = TRUE;
-	NachOSpageTable[i].use = FALSE;
-	NachOSpageTable[i].dirty = FALSE;
+        NachOSpageTable[i].virtualPage = i;
+
+        NachOSpageTable[i].physicalPage = numPagesAllocated;
+        numPagesAllocated++;
+
+        NachOSpageTable[i].valid = TRUE;
+        NachOSpageTable[i].use = FALSE;
+        NachOSpageTable[i].dirty = FALSE;
         NachOSpageTable[i].shared = FALSE;
-        NachOSpageTable[i].readOnly = FALSE;  // if the code segment was entirely on 
-					// a separate page, we could set its 
-					// pages to be read-only
+        NachOSpageTable[i].readOnly = FALSE;
+        // if the code segment was entirely on
+        // a separate page, we could set its
+        // pages to be read-only
     }
-// zero out the entire address space, to zero the unitialized data segment 
-// and the stack segment
+    // zero out the entire address space, to zero the unitialized data segment
+    // and the stack segment
     bzero(&machine->mainMemory[numPagesAllocated*PageSize], size);
  
-    numPagesAllocated += numPagesInVM;
-
-// then, copy in the code and data segments into memory
+    // then, copy in the code and data segments into memory
     if (noffH.code.size > 0) {
         DEBUG('a', "Initializing code segment, at 0x%x, size %d\n", 
-			noffH.code.virtualAddr, noffH.code.size);
+              noffH.code.virtualAddr, noffH.code.size);
         vpn = noffH.code.virtualAddr/PageSize;
         offset = noffH.code.virtualAddr%PageSize;
         entry = &NachOSpageTable[vpn];
         pageFrame = entry->physicalPage;
         executable->ReadAt(&(machine->mainMemory[pageFrame * PageSize + offset]),
-			noffH.code.size, noffH.code.inFileAddr);
+                           noffH.code.size, noffH.code.inFileAddr);
     }
     if (noffH.initData.size > 0) {
         DEBUG('a', "Initializing data segment, at 0x%x, size %d\n", 
-			noffH.initData.virtualAddr, noffH.initData.size);
+              noffH.initData.virtualAddr, noffH.initData.size);
         vpn = noffH.initData.virtualAddr/PageSize;
         offset = noffH.initData.virtualAddr%PageSize;
         entry = &NachOSpageTable[vpn];
         pageFrame = entry->physicalPage;
         executable->ReadAt(&(machine->mainMemory[pageFrame * PageSize + offset]),
-			noffH.initData.size, noffH.initData.inFileAddr);
+                           noffH.initData.size, noffH.initData.inFileAddr);
     }
 
 }
@@ -139,7 +146,9 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
     unsigned i, j, numSharedPages = 0;
 
     TranslationEntry* parentPageTable = parentSpace->GetPageTable();
-    
+
+    executable = parentSpace->executable;
+
     for(i = 0; i < numPagesInVM; ++i) {
         if (parentPageTable[i].shared) {
             ++ numSharedPages;
@@ -228,6 +237,11 @@ int ProcessAddrSpace::AddSharedSpace(int SharedSpaceSize) {
     RestoreStateOnSwitch();
 
     return (numPagesInVM - numSharedPages) * PageSize;
+}
+
+void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
+    stats->numPageFaults++;
+    unsigned vpn = virtAddr/PageSize;
 }
 
 //----------------------------------------------------------------------
