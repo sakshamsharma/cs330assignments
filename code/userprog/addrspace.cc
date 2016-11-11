@@ -153,7 +153,6 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
                         &(machine->mainMemory[startAddrParent]), PageSize);
 
                 stats->numPageFaults ++;
-                currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
 
                 // TODO: What if it wasn't used till now?
                 // Should it be fine?
@@ -171,6 +170,9 @@ ProcessAddrSpace::ProcessAddrSpace(ProcessAddrSpace *parentSpace)
         NachOSpageTable[i].readOnly = parentPageTable[i].readOnly;  	// if the code segment was entirely on
                                         			// a separate page, we could set its
                                         			// pages to be read-only
+        if (NachOSpageTable[i].valid && !(NachOSpageTable[i].shared)) {
+            currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
+        }
     }
 }
 
@@ -231,8 +233,8 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
         // we cannot proceed
         ASSERT(numPagesAllocated < NumPhysPages);
     }
-    printf("Replacement Algo is %d\n", replacementAlgo);
 
+    printf("Getting a new page for VPN: %d for the process: %d\n", vpn, currentThread->GetPID());
     if (usedPages == NumPhysPages) {
         switch(replacementAlgo) {
             case RANDOM_REPL:
@@ -289,8 +291,9 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
 
     ASSERT(foundPage != -1);
 
-    NachOSpageTable[i].valid = TRUE;
-    NachOSpageTable[i].physicalPage = foundPage;
+    printf("FoundPage is: %d\n", foundPage);
+    NachOSpageTable[vpn].valid = TRUE;
+    NachOSpageTable[vpn].physicalPage = foundPage;
     return foundPage;
 }
 
@@ -356,6 +359,7 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
 
     delete executable;
 
+    printf("Returned from getnextpagetowrite\n");
     currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
 }
 
