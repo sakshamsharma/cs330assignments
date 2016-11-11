@@ -108,7 +108,7 @@ ProcessAddrSpace::ProcessAddrSpace(OpenFile *_executable)
     }
     // zero out the entire address space, to zero the unitialized data segment
     // and the stack segment
-    bzero(&machine->mainMemory[numPagesAllocated*PageSize], size);
+    bzero(&machine->mainMemory[(NachOSpageTable[0].physicalPage)*PageSize], size);
  
     // then, copy in the code and data segments into memory
     if (noffH.code.size > 0) {
@@ -231,8 +231,6 @@ int ProcessAddrSpace::AddSharedSpace(int SharedSpaceSize) {
         NewTranslation[i].readOnly = FALSE;
     }
 
-    
-    numPagesAllocated += numSharedPages;
     numPagesInVM += numSharedPages;
 
     delete NachOSpageTable;
