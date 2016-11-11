@@ -57,12 +57,14 @@ SwapHeader (NoffHeader *noffH)
 //	"executable" is the file containing the object code to load into memory
 //----------------------------------------------------------------------
 
-ProcessAddrSpace::ProcessAddrSpace(OpenFile *execfile, char *programname)
+ProcessAddrSpace::ProcessAddrSpace(OpenFile *execfile, char *programname, int _pid)
 {
     unsigned int i, size;
     unsigned vpn, offset;
     TranslationEntry *entry;
     unsigned int pageFrame;
+
+    pid = _pid;
 
     fileName = copyFileName(programname);
 
@@ -289,7 +291,7 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
         usedPages++;
     }
 
-    machine->memoryUsedBy[foundPage] = pid;
+    machine->memoryUsedBy[foundPage] = this->pid;
     machine->virtualPageNo[foundPage] = vpn;
 
     ASSERT(foundPage != -1);

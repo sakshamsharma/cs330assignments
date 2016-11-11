@@ -24,7 +24,7 @@ class ProcessAddrSpace {
     // Create an address space,
     // initializing it with the program
     // stored in the file "executable"
-    ProcessAddrSpace(OpenFile *threadexecutable, char *filename);
+    ProcessAddrSpace(OpenFile *threadexecutable, char *filename, int pid);
 
     ProcessAddrSpace (ProcessAddrSpace *parentSpace, int pid);	// Used by fork
 
