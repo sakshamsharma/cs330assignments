@@ -343,7 +343,7 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
     unsigned vpn = virtAddr/PageSize;
     ASSERT(vpn <= numPagesInVM);
 
-    unsigned offset, pageFrame, i;
+    unsigned offset, i;
     unsigned startVirtAddr = PageSize * vpn;
     unsigned endVirtAddr = startVirtAddr + PageSize;
 
@@ -360,27 +360,23 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
     if (!NachOSpageTable[vpn].ifUsed) {
         unsigned start = max(startVirtAddr, noffH.code.virtualAddr);
         unsigned end = min(endVirtAddr, noffH.code.virtualAddr+noffH.code.size);
-        // printf("[Code] For virtual page: %d, start: %d, end: %d\n", vpn, start, end);
-        // printf("executable: %u\n", (unsigned)executable);
+
         if (start < end) {
             offset = start - startVirtAddr;
-            pageFrame = newPhysPage;
-            // printf("addr reading at: %d %d %d\n", pageFrame*PageSize + offset,
-            // (end-start), noffH.code.inFileAddr + (start - noffH.code.virtualAddr));
-            executable->ReadAt(&(machine->mainMemory[pageFrame * PageSize + offset]),
+            executable->ReadAt(&(machine->mainMemory[newPhysPage * PageSize + offset]),
                                (end - start), noffH.code.inFileAddr + (start - noffH.code.virtualAddr));
         }
 
         start = max(startVirtAddr, noffH.initData.virtualAddr);
         end = min(endVirtAddr, noffH.initData.virtualAddr+noffH.initData.size);
-        // printf("[initData] For virtual page: %d, start: %d, end: %d\n", vpn, start, end);
+
         if (start < end) {
             offset = start - startVirtAddr;
-            pageFrame = newPhysPage;
-            executable->ReadAt(&(machine->mainMemory[pageFrame * PageSize + offset]),
+            executable->ReadAt(&(machine->mainMemory[newPhysPage * PageSize + offset]),
                                (end - start), noffH.initData.inFileAddr + (start - noffH.initData.virtualAddr));
         }
 
+        printf("[%d] Used first time vpn:%d at phys: %d\n", pid, vpn, newPhysPage);
     } else {
         // Get this from swap memory
         memcpy(&(machine->mainMemory[newPhysPage*PageSize]), &(swapMemory[vpn*PageSize]), PageSize);
@@ -389,11 +385,11 @@ void ProcessAddrSpace::PageFaultHandler(unsigned virtAddr) {
     delete executable;
     NachOSpageTable[vpn].ifUsed = 1;
 
-    printf("[%d] Returned from getnextpagetowrite\n", pid);
+    printf("[%d] Going to sleep\n", pid);
     currentThread->SortedInsertInWaitQueue (1000+stats->totalTicks);
     printf("[%d] Returned from sleep\n", pid);
-    printf("Was faulting on %d\n", vpn);
-    printf("It is now at %d\n", NachOSpageTable[vpn].physicalPage);
+    printf("Was faulting on vpn: %d\n", vpn);
+    printf("It is now at phys: %d\n", NachOSpageTable[vpn].physicalPage);
 }
 
 
