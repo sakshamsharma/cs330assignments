@@ -252,14 +252,17 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
             case RANDOM_REPL:
                 printf("Entering random replacement algorithm\n");
                 foundPage = Random()%(NumPhysPages);
-                if (foundPage == notToReplace) {
-                    foundPage = (foundPage + (Random()%(NumPhysPages-1))+1)%NumPhysPages;
-                }
 
                 // If this is a shared page
-                while (threadArray[machine->memoryUsedBy[foundPage]]->space->isVpnShared(machine->virtualPageNo[foundPage])) {
+                while (threadArray[machine->memoryUsedBy[foundPage]]->space->isVpnShared(machine->virtualPageNo[foundPage]) ||
+                       foundPage == notToReplace) {
                     foundPage = Random()%(NumPhysPages);
                 };
+
+                if (machine->memoryUsedBy[foundPage] != -1) {
+                    threadArray[machine->memoryUsedBy[foundPage]]->space->SaveToSwap(machine->virtualPageNo[foundPage]);
+                }
+                printf("Swapped phys page %d!\n", foundPage);
 
                 break;
 
@@ -270,15 +273,11 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
                     machine->referenceBit[LRU_Clock_ptr] = 0;
                     LRU_Clock_ptr = (LRU_Clock_ptr+1)%NumPhysPages;
 
-                    // This is the page being copied, cannot replace it
-                    if (LRU_Clock_ptr == notToReplace) {
+                    // If this is the page being copied, cannot replace it
+                    // If this is a shared page, cannot replace it
+                    while (threadArray[machine->memoryUsedBy[LRU_Clock_ptr]]->space->isVpnShared(machine->virtualPageNo[LRU_Clock_ptr]) ||
+                           LRU_Clock_ptr == notToReplace) {
                         machine->referenceBit[LRU_Clock_ptr] = 0;
-                        LRU_Clock_ptr = (LRU_Clock_ptr+1)%NumPhysPages;
-                    }
-
-
-                    // If this is a shared page, we cannot replace it
-                    while (threadArray[machine->memoryUsedBy[LRU_Clock_ptr]]->space->isVpnShared(machine->virtualPageNo[LRU_Clock_ptr])) {
                         LRU_Clock_ptr = (LRU_Clock_ptr+1)%NumPhysPages;
                     };
                 }
@@ -290,12 +289,9 @@ int ProcessAddrSpace::GetNextPageToWrite(int vpn, int notToReplace) {
 
                 // Swap out the replaced page
                 if(machine->memoryUsedBy[foundPage] != -1) {
-                    printf("[%d] For putting VPN %d, Phys %d used by %d\n", pid, vpn, foundPage, machine->memoryUsedBy[foundPage]);
-                    printf("Process pid is %d\n", threadArray[machine->memoryUsedBy[foundPage]]->GetPID());
-                    printf("That vpn was %d\n", machine->virtualPageNo[foundPage]);
                     threadArray[machine->memoryUsedBy[foundPage]]->space->SaveToSwap(machine->virtualPageNo[foundPage]);
                 }
-                printf("Swapped!\n");
+                printf("Swapped phys page %d!\n", pid);
 
                 // Increment the Clock pointer
                 LRU_Clock_ptr = (LRU_Clock_ptr+1)%NumPhysPages;
